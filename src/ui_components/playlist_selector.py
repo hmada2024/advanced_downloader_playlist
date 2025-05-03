@@ -119,18 +119,21 @@ class PlaylistSelector(ctk.CTkScrollableFrame):
 
     def enable(self):
         """Enables control buttons and checkboxes."""
-        logging.debug("PlaylistSelector: Enabling controls.")
-        self.select_all_button.configure(state="normal")
-        self.deselect_all_button.configure(state="normal")
-        for cb, var, index in self.checkboxes_data:
-            if cb and isinstance(cb, ctk.CTkCheckBox):
-                cb.configure(state="normal")
+        self._extracted_from_disable_3(
+            "PlaylistSelector: Enabling controls.", "normal"
+        )
 
     def disable(self):
         """Disables control buttons and checkboxes."""
-        logging.debug("PlaylistSelector: Disabling controls.")
-        self.select_all_button.configure(state="disabled")
-        self.deselect_all_button.configure(state="disabled")
+        self._extracted_from_disable_3(
+            "PlaylistSelector: Disabling controls.", "disabled"
+        )
+
+    # TODO Rename this here and in `enable` and `disable`
+    def _extracted_from_disable_3(self, arg0, state):
+        logging.debug(arg0)
+        self.select_all_button.configure(state=state)
+        self.deselect_all_button.configure(state=state)
         for cb, var, index in self.checkboxes_data:
             if cb and isinstance(cb, ctk.CTkCheckBox):
-                cb.configure(state="disabled")
+                cb.configure(state=state)
