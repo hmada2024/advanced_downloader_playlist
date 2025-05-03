@@ -1,0 +1,18 @@
+2025-05-03 19:10:21 - INFO - [main:33] - -----------------------------------
+2025-05-03 19:10:21 - INFO - [main:34] - Application starting...
+2025-05-03 19:10:21 - INFO - [main:35] - Log level set to: INFO
+2025-05-03 19:10:21 - INFO - [main:47] - Application __main__ block entered.
+2025-05-03 19:10:21 - INFO - [main:58] - Application running as script. Path: e:\advanced_downloader
+2025-05-03 19:10:21 - INFO - [main:66] - Initializing UI...
+2025-05-03 19:10:21 - INFO - [ui_interface:57] - UserInterface: Attempting to set window icon from: E:\advanced_downloader\assets\logo.ico
+2025-05-03 19:10:21 - INFO - [ui_interface:61] - UserInterface: Window icon set successfully.
+2025-05-03 19:10:21 - INFO - [ui_state_manager:26] - UIStateManager: Entering idle state.
+2025-05-03 19:10:21 - INFO - [main:68] - UI Initialized.
+2025-05-03 19:10:21 - INFO - [main:70] - Initializing Logic Handler...
+2025-05-03 19:10:21 - INFO - [logic_handler:32] - LogicHandler: Initializing...
+2025-05-03 19:10:21 - INFO - [logic_utils:30] - Found bundled ffmpeg: E:\advanced_downloader\ffmpeg_bin\ffmpeg.exe
+2025-05-03 19:10:21 - INFO - [logic_handler:43] - LogicHandler: FFmpeg path set to: E:\advanced_downloader\ffmpeg_bin\ffmpeg.exe
+2025-05-03 19:10:21 - INFO - [logic_handler:47] - LogicHandler: Initialization complete.
+2025-05-03 19:10:21 - INFO - [main:78] - Logic Handler Initialized.
+2025-05-03 19:10:21 - INFO - [main:82] - Logic Handler linked to UI.
+2025-05-03 19:10:21 - INFO - [main:85] - Starting main UI event loop (app.mainloop()).
