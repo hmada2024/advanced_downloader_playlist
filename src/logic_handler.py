@@ -3,12 +3,18 @@
 # Purpose: Contains the coordinating class for logic operations.
 
 import threading
+
 # --- تعديل الاستيرادات --- Modify Imports ---
-from .info_fetcher import InfoFetcher         # <-- استيراد من الملف الجديد Import from new file
-from .downloader import Downloader             # <-- استيراد من الملف الجديد Import from new file
-from .logic_utils import find_ffmpeg         # <-- استيراد من الملف الجديد Import from new file
-from .exceptions import DownloadCancelled    # الاستثناء يبقى كما هو Exception remains the same
+from .info_fetcher import (
+    InfoFetcher,
+)  # <-- استيراد من الملف الجديد Import from new file
+from .downloader import Downloader  # <-- استيراد من الملف الجديد Import from new file
+from .logic_utils import find_ffmpeg  # <-- استيراد من الملف الجديد Import from new file
+from .exceptions import (
+    DownloadCancelled,
+)  # الاستثناء يبقى كما هو Exception remains the same
 # ------------------------------------------
+
 
 class LogicHandler:
     """
@@ -17,6 +23,7 @@ class LogicHandler:
     يدير الخيوط وطلبات الإلغاء.
     Manages threads and cancellation requests.
     """
+
     def __init__(
         self,
         status_callback,
@@ -45,9 +52,11 @@ class LogicHandler:
         # البحث عن FFmpeg عند التهيئة Find FFmpeg on initialization
         self.ffmpeg_path = find_ffmpeg()
         if not self.ffmpeg_path:
-             print("LogicHandler Warning: FFmpeg not found. Some operations like MP3 conversion might fail.")
-             # Optional: You could even pass a warning up to the UI status here
-             # self.status_callback("Warning: FFmpeg not found. MP3 conversion might fail.")
+            print(
+                "LogicHandler Warning: FFmpeg not found. Some operations like MP3 conversion might fail."
+            )
+            # Optional: You could even pass a warning up to the UI status here
+            # self.status_callback("Warning: FFmpeg not found. MP3 conversion might fail.")
 
         # حدث لإدارة الإلغاء بين الخيوط Event to manage cancellation across threads
         self.cancel_event = threading.Event()
@@ -86,7 +95,7 @@ class LogicHandler:
             return
 
         print("LogicHandler: Starting info fetch...")
-        self.cancel_event.clear() # إعادة تعيين حدث الإلغاء Reset cancellation event
+        self.cancel_event.clear()  # إعادة تعيين حدث الإلغاء Reset cancellation event
 
         # إنشاء كائن InfoFetcher مع الكول باكات اللازمة Create InfoFetcher instance with necessary callbacks
         fetcher_instance = InfoFetcher(
@@ -95,7 +104,7 @@ class LogicHandler:
             success_callback=self.info_success_callback,
             error_callback=self.info_error_callback,
             status_callback=self.status_callback,
-            progress_callback=self.progress_callback, # يستخدم لتعيين 0% و 100% Used to set 0% and 100%
+            progress_callback=self.progress_callback,  # يستخدم لتعيين 0% و 100% Used to set 0% and 100%
             finished_callback=self.finished_callback,
         )
         # إنشاء وتشغيل الخيط Create and start the thread
@@ -121,34 +130,38 @@ class LogicHandler:
         # التحقق من المدخلات الأساسية Check basic inputs
         if not url or not save_path:
             self.status_callback("Error: URL and Save Path are required.")
-            self.finished_callback() # إعادة الواجهة Reset UI
+            self.finished_callback()  # إعادة الواجهة Reset UI
             return
         # منع تشغيل عمليتين في نفس الوقت Prevent concurrent operations
         if self._is_operation_running():
             return
 
-        print(f"LogicHandler: Starting download... Playlist: {is_playlist}, Selected: {selected_items_count}, Total: {total_playlist_count}, Format Choice: '{format_choice}'")
-        self.cancel_event.clear() # إعادة تعيين حدث الإلغاء Reset cancellation event
+        print(
+            f"LogicHandler: Starting download... Playlist: {is_playlist}, Selected: {selected_items_count}, Total: {total_playlist_count}, Format Choice: '{format_choice}'"
+        )
+        self.cancel_event.clear()  # إعادة تعيين حدث الإلغاء Reset cancellation event
 
         # إنشاء كائن Downloader
         # --- تعديل: إزالة تمرير quality_format_id ---
         downloader_instance = Downloader(
             url=url,
             save_path=save_path,
-            format_choice=format_choice,             # تمرير الخيار العام Pass general choice
+            format_choice=format_choice,  # تمرير الخيار العام Pass general choice
             # quality_format_id=quality_format_id,  <-- Argument removed
             is_playlist=is_playlist,
             playlist_items=playlist_items,
-            selected_items_count=selected_items_count, # تمرير العدد المختار Pass selected count
-            total_playlist_count=total_playlist_count, # تمرير العدد الكلي Pass total count
-            ffmpeg_path=self.ffmpeg_path,             # تمرير مسار ffmpeg Pass ffmpeg path
-            cancel_event=self.cancel_event,            # تمرير حدث الإلغاء Pass cancellation event
-            status_callback=self.status_callback,       # تمرير كول باكات الواجهة Pass UI callbacks
+            selected_items_count=selected_items_count,  # تمرير العدد المختار Pass selected count
+            total_playlist_count=total_playlist_count,  # تمرير العدد الكلي Pass total count
+            ffmpeg_path=self.ffmpeg_path,  # تمرير مسار ffmpeg Pass ffmpeg path
+            cancel_event=self.cancel_event,  # تمرير حدث الإلغاء Pass cancellation event
+            status_callback=self.status_callback,  # تمرير كول باكات الواجهة Pass UI callbacks
             progress_callback=self.progress_callback,
             finished_callback=self.finished_callback,
         )
         # إنشاء وتشغيل الخيط Create and start the thread
-        self.current_thread = threading.Thread(target=downloader_instance.run, daemon=True)
+        self.current_thread = threading.Thread(
+            target=downloader_instance.run, daemon=True
+        )
         self.current_thread.start()
 
     def cancel_operation(self):

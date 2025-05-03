@@ -19,9 +19,13 @@ from .ui_components.playlist_selector import PlaylistSelector
 import sys
 import os
 from pathlib import Path
+import sys
+import os
+from pathlib import Path
+import logging
 # -----------------------------------------------------------
 
-
+logger = logging.getLogger(__name__) 
 # The main UI class now inherits from CTk and the three Mixins
 class UserInterface(
     ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActionHandlerMixin
