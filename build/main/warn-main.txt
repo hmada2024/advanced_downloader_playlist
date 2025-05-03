@@ -1,0 +1,28 @@
+
+This file lists modules PyInstaller was not able to find. This does not
+necessarily mean this module is required for running your program. Python and
+Python 3rd-party packages include a lot of conditional or optional modules. For
+example the module 'ntpath' only exists on Windows, whereas the module
+'posixpath' only exists on Posix systems.
+
+Types if import:
+* top-level: imported at the top-level - look at these first
+* conditional: imported within an if-statement
+* delayed: imported within a function
+* optional: imported within a try-except-statement
+
+IMPORTANT: Do NOT post this list to the issue-tracker. Use it as a basis for
+            tracking down the missing module yourself. Thanks!
+
+missing module named grp - imported by shutil (delayed, optional), tarfile (optional), pathlib._local (optional), subprocess (delayed, conditional, optional)
+missing module named pwd - imported by posixpath (delayed, conditional, optional), shutil (delayed, optional), tarfile (optional), pathlib._local (optional), subprocess (delayed, conditional, optional)
+missing module named _frozen_importlib_external - imported by importlib._bootstrap (delayed), importlib (optional), importlib.abc (optional)
+excluded module named _frozen_importlib - imported by importlib (optional), importlib.abc (optional)
+missing module named 'collections.abc' - imported by traceback (top-level), typing (top-level), inspect (top-level), logging (top-level), importlib.resources.readers (top-level), selectors (top-level), tracemalloc (top-level)
+missing module named posix - imported by posixpath (optional), shutil (conditional), importlib._bootstrap_external (conditional), os (conditional, optional)
+missing module named resource - imported by posix (top-level)
+missing module named _posixsubprocess - imported by subprocess (conditional)
+missing module named fcntl - imported by subprocess (optional)
+missing module named yt_dlp - imported by src.info_fetcher (top-level), src.downloader (top-level), src.logic_utils (top-level)
+missing module named humanize - imported by src.downloader (top-level)
+missing module named customtkinter - imported by E:\advanced_downloader\main.py (top-level), src.ui_interface (top-level), src.ui_state_manager (top-level), src.ui_callback_handler (top-level), src.ui_action_handler (top-level), src.ui_components.top_input_frame (top-level), src.ui_components.options_control_frame (top-level), src.ui_components.path_selection_frame (top-level), src.ui_components.bottom_controls_frame (top-level), src.ui_components.playlist_selector (top-level)
