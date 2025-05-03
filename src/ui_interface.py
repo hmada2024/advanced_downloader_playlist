@@ -2,10 +2,6 @@
 # -- Main application UI window class and coordinator between components --
 
 import customtkinter as ctk
-# Remove direct imports of filedialog, messagebox, os if only used in Mixins now
-# from tkinter import filedialog, messagebox
-# import os
-
 # --- Import Mixin Classes ---
 from .ui_state_manager import UIStateManagerMixin
 from .ui_callback_handler import UICallbackHandlerMixin
@@ -18,6 +14,11 @@ from .ui_components.path_selection_frame import PathSelectionFrame
 from .ui_components.bottom_controls_frame import BottomControlsFrame
 from .ui_components.playlist_selector import PlaylistSelector
 
+# --- *** استيرادات إضافية لتعيين الأيقونة وتحديد المسار *** ---
+import sys
+import os
+from pathlib import Path
+# -----------------------------------------------------------
 
 # The main UI class now inherits from CTk and the three Mixins
 class UserInterface(ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActionHandlerMixin):
@@ -48,6 +49,43 @@ class UserInterface(ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActi
         self.geometry("850x750") # Adjusted geometry
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
+
+        # --- *** كود تعيين أيقونة النافذة (Title Bar Icon) *** ---
+        try:
+            # تحديد المسار الأساسي سواء كان التطبيق مجمداً أم لا
+            if getattr(sys, "frozen", False):
+                # المسار عند تشغيل الملف التنفيذي المجمَّد
+                base_path = Path(sys._MEIPASS)
+            else:
+                # المسار عند تشغيل السكربت مباشرة (ui_interface.py داخل src)
+                # نصعد مستويين للوصول لمجلد المشروع الرئيسي
+                base_path = Path(__file__).resolve().parent.parent
+
+            # بناء المسار الكامل لملف الأيقونة
+            icon_path = base_path / "assets" / "logo.ico"
+
+            # التحقق من وجود الملف قبل محاولة تعيينه
+            if icon_path.is_file():
+                print(f"INFO: Attempting to set window icon from: {icon_path}")
+                self.iconbitmap(str(icon_path)) # تعيين الأيقونة للنافذة
+                print("INFO: Window icon set successfully.")
+            else:
+                # طباعة تحذير إذا لم يتم العثور على الملف
+                # هذا يساعد في التشخيص إذا لم تظهر الأيقونة
+                print(f"WARNING: Window icon file not found at calculated path: {icon_path}")
+                print(
+                    "WARNING: Ensure 'logo.ico' exists in the 'assets' folder and is included during packaging (e.g., using PyInstaller's --add-data)."
+                )
+
+        except Exception as e:
+            # طباعة أي خطأ قد يحدث أثناء محاولة تعيين الأيقونة
+            print("ERROR: Failed to set window icon.")
+            print(f"ERROR Details: {e}")
+                # قد يكون السبب ملف .ico غير صالح، أو خطأ في المسار، أو مشكلة في Tkinter/Tcl
+                # مثال لخطأ محتمل: except tk.TclError as tcl_err: print(f"ERROR: TclError setting icon (invalid .ico?): {tcl_err}")
+
+        # --- *** نهاية كود تعيين أيقونة النافذة *** ---
+
 
         # --- Main Grid Configuration ---
         self.grid_columnconfigure(0, weight=1) # Single column expands
