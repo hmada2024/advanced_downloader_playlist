@@ -145,13 +145,11 @@ class PlaylistSelector(ctk.CTkScrollableFrame):
         Returns a comma-separated string of selected item indices.
         """
         selected_indices = []
-        for cb, var, index in self.checkboxes_data:
-            # التأكد من أنه مربع اختيار صالح وتم تحديده Check if it's a valid checkbox and selected
-            if cb and isinstance(cb, ctk.CTkCheckBox) and var and var.get() == "on":
-                selected_indices.append(
-                    index
-                )  # إضافة الفهرس المخزن Add the stored index
-
+        selected_indices.extend(
+            index
+            for cb, var, index in self.checkboxes_data
+            if cb and isinstance(cb, ctk.CTkCheckBox) and var and var.get() == "on"
+        )
         if not selected_indices:
             return None  # لم يتم تحديد أي عنصر No item selected
 
@@ -170,21 +168,19 @@ class PlaylistSelector(ctk.CTkScrollableFrame):
         تمكين أزرار التحكم ومربعات الاختيار.
         Enables control buttons and checkboxes.
         """
-        self.select_all_button.configure(state="normal")
-        self.deselect_all_button.configure(state="normal")
-        # تمكين مربعات الاختيار الموجودة Enable existing checkboxes
-        for cb, var, index in self.checkboxes_data:
-            if cb and isinstance(cb, ctk.CTkCheckBox):
-                cb.configure(state="normal")
+        self._extracted_from_disable_6("normal")
 
     def disable(self):
         """
         تعطيل أزرار التحكم ومربعات الاختيار.
         Disables control buttons and checkboxes.
         """
-        self.select_all_button.configure(state="disabled")
-        self.deselect_all_button.configure(state="disabled")
-        # تعطيل مربعات الاختيار الموجودة Disable existing checkboxes
+        self._extracted_from_disable_6("disabled")
+
+    # TODO Rename this here and in `enable` and `disable`
+    def _extracted_from_disable_6(self, state):
+        self.select_all_button.configure(state=state)
+        self.deselect_all_button.configure(state=state)
         for cb, var, index in self.checkboxes_data:
             if cb and isinstance(cb, ctk.CTkCheckBox):
-                cb.configure(state="disabled")
+                cb.configure(state=state)
