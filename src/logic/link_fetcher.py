@@ -62,7 +62,9 @@ class LinkFetcher:
         check_cancel(self.cancel_event, "before building format")
 
         # بناء سلسلة الصيغة لـ yt-dlp
-        format_selector, _, _ = build_format_string(self.format_choice, self.ffmpeg_path)
+        format_selector, _, _ = build_format_string(
+            self.format_choice, self.ffmpeg_path
+        )
 
         if not format_selector:
             self.error_callback("Could not determine format selector for yt-dlp.")
@@ -74,9 +76,10 @@ class LinkFetcher:
         command: List[str] = [
             "yt-dlp",
             "--ignore-errors",  # تجاهل أخطاء الفيديو الفردي في القائمة
-            "--no-check-certificate", # تجاهل مشاكل شهادة SSL المحتملة
-            "-g",               # الخيار الأساسي: الحصول على الروابط المباشرة فقط
-            "--format", format_selector, # تحديد الصيغة/الجودة المطلوبة
+            "--no-check-certificate",  # تجاهل مشاكل شهادة SSL المحتملة
+            "-g",  # الخيار الأساسي: الحصول على الروابط المباشرة فقط
+            "--format",
+            format_selector,  # تحديد الصيغة/الجودة المطلوبة
             # يمكنك إضافة خيارات أخرى هنا إذا لزم الأمر مثل --playlist-items
             self.playlist_url,  # رابط قائمة التشغيل
         ]
@@ -85,7 +88,6 @@ class LinkFetcher:
         if self.ffmpeg_path:
             command.extend(["--ffmpeg-location", self.ffmpeg_path])
             print(f"LinkFetcher: Providing ffmpeg path: {self.ffmpeg_path}")
-
 
         print(f"LinkFetcher: Running command: {' '.join(command)}")
 
@@ -97,12 +99,19 @@ class LinkFetcher:
             result = subprocess.run(
                 command,
                 capture_output=True,  # التقاط المخرجات القياسية والخطأ
-                text=True,           # التعامل مع المخرجات كنص
-                check=True,          # إطلاق استثناء إذا كان كود الخروج غير صفر
-                encoding="utf-8",    # تحديد الترميز لضمان قراءة صحيحة
-                errors="ignore",     # تجاهل أخطاء الترميز المحتملة في المخرجات
+                text=True,  # التعامل مع المخرجات كنص
+                check=True,  # إطلاق استثناء إذا كان كود الخروج غير صفر
+                encoding="utf-8",  # تحديد الترميز لضمان قراءة صحيحة
+                errors="ignore",  # تجاهل أخطاء الترميز المحتملة في المخرجات
                 # إضافة startupinfo لمنع ظهور نافذة موجه الأوامر على ويندوز
-                startupinfo=subprocess.STARTUPINFO(wShowWindow=subprocess.SW_HIDE, dwFlags=subprocess.STARTF_USESHOWWINDOW) if hasattr(subprocess, 'STARTUPINFO') else None # Windows specific hide console
+                startupinfo=(
+                    subprocess.STARTUPINFO(
+                        wShowWindow=subprocess.SW_HIDE,
+                        dwFlags=subprocess.STARTF_USESHOWWINDOW,
+                    )
+                    if hasattr(subprocess, "STARTUPINFO")
+                    else None
+                ),  # Windows specific hide console
             )
 
             # التحقق من الإلغاء بعد انتهاء العملية الفرعية
@@ -112,8 +121,10 @@ class LinkFetcher:
             links_output = result.stdout.strip()
             if not links_output:
                 # إذا كان المخرج فارغًا ولكن العملية نجحت، قد تكون القائمة فارغة أو خاصة
-                 self.error_callback("yt-dlp returned successfully but found no links. Playlist might be empty, private, or requires login.")
-                 return
+                self.error_callback(
+                    "yt-dlp returned successfully but found no links. Playlist might be empty, private, or requires login."
+                )
+                return
 
             links_list: List[str] = links_output.splitlines()
 
@@ -121,7 +132,9 @@ class LinkFetcher:
             links_list = [link for link in links_list if link.strip()]
 
             if not links_list:
-                raise ValueError("yt-dlp did not return any valid links after filtering.")
+                raise ValueError(
+                    "yt-dlp did not return any valid links after filtering."
+                )
 
             print(f"LinkFetcher: Successfully fetched {len(links_list)} links.")
             self.success_callback(links_list)  # استدعاء كولباك النجاح مع قائمة الروابط
@@ -132,14 +145,20 @@ class LinkFetcher:
             # محاولة استخراج رسالة خطأ أوضح
             clean_error = error_output
             if "ERROR:" in error_output:
-                 clean_error = error_output.split("ERROR:", 1)[-1].strip()
-            print(f"LinkFetcher Error (CalledProcessError): {e}\nStderr:\n{error_output}")
+                clean_error = error_output.split("ERROR:", 1)[-1].strip()
+            print(
+                f"LinkFetcher Error (CalledProcessError): {e}\nStderr:\n{error_output}"
+            )
             self.error_callback(f"yt-dlp Error: {clean_error}")
 
         except FileNotFoundError:
             # لم يتم العثور على الملف التنفيذي لـ yt-dlp
-             print("LinkFetcher Error: 'yt-dlp' command not found. Is it installed and in PATH?")
-             self.error_callback("'yt-dlp' command not found. Please ensure it is installed and accessible.")
+            print(
+                "LinkFetcher Error: 'yt-dlp' command not found. Is it installed and in PATH?"
+            )
+            self.error_callback(
+                "'yt-dlp' command not found. Please ensure it is installed and accessible."
+            )
 
         except DownloadCancelled:
             # تم طلب الإلغاء
@@ -147,8 +166,10 @@ class LinkFetcher:
 
         except Exception as e:
             # أي أخطاء أخرى غير متوقعة
-            log_unexpected_error(e, self.error_callback, "during link fetching subprocess")
-            raise # إعادة إطلاق للسماح لـ finally في run بالعمل
+            log_unexpected_error(
+                e, self.error_callback, "during link fetching subprocess"
+            )
+            raise  # إعادة إطلاق للسماح لـ finally في run بالعمل
 
     def run(self) -> None:
         """
@@ -166,7 +187,9 @@ class LinkFetcher:
         except Exception as e:
             # التقاط أي أخطاء غير متوقعة لم يتم التعامل معها في _get_links_core
             # يتم استدعاء error_callback بالفعل بواسطة log_unexpected_error
-            print(f"LinkFetcher Run: Caught unexpected exception in run: {type(e).__name__}: {e}")
+            print(
+                f"LinkFetcher Run: Caught unexpected exception in run: {type(e).__name__}: {e}"
+            )
             # لا نرفع الخطأ مرة أخرى هنا، فقط نضمن استدعاء finished_callback
         finally:
             # هذا البلوك يتم تنفيذه دائمًا
