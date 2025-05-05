@@ -9,7 +9,13 @@ class DownloadCancelled(Exception):
     Custom exception raised when the user cancels a download or info fetch operation.
     """
 
-    pass
+    def __init__(self, message: str = "Operation cancelled by user."):
+        """
+        Initializes the DownloadCancelled exception.
+        Args:
+            message (str): The cancellation message.
+        """
+        super().__init__(message)
 
 
 # يمكنك إضافة استثناءات أخرى هنا إذا احتجت لاحقًا

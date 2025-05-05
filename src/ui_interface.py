@@ -2,27 +2,32 @@
 # -- Main application UI window class and coordinator between components --
 
 import customtkinter as ctk
+from typing import Optional, Dict, Any, Callable  # Added typing
 
-# --- Import Mixin Classes (using new names) ---
-from .ui_state_manager import (
-    UIStateManagerMixin,
-)  # <-- تم التعديل: إزالة الشرطة السفلية
-from .ui_callback_handler import (
-    UICallbackHandlerMixin,
-)  # <-- تم التعديل: إزالة الشرطة السفلية
-from .ui_action_handler import (
-    UIActionHandlerMixin,
-)  # <-- تم التعديل: إزالة الشرطة السفلية
+# --- Import Logic and Handler Classes ---
+# Use Optional since logic_handler might be injected after __init__
+from .logic_handler import LogicHandler, Optional
 
-# --- Import UI Components (using new names) ---
-from .ui_components.top_input_frame import TopInputFrame  # <-- تم التعديل
-from .ui_components.options_control_frame import OptionsControlFrame  # <-- تم التعديل
-from .ui_components.path_selection_frame import PathSelectionFrame  # <-- تم التعديل
-from .ui_components.bottom_controls_frame import BottomControlsFrame  # <-- تم التعديل
-from .ui_components.playlist_selector import PlaylistSelector  # <-- تم التعديل
+# Import Mixin Classes (which provide functionality to UserInterface)
+from .ui_state_manager import UIStateManagerMixin
+from .ui_callback_handler import UICallbackHandlerMixin
+from .ui_action_handler import UIActionHandlerMixin
+
+# --- Import UI Component Classes ---
+from .ui_components.top_input_frame import TopInputFrame
+from .ui_components.options_control_frame import OptionsControlFrame
+from .ui_components.path_selection_frame import PathSelectionFrame
+from .ui_components.bottom_controls_frame import BottomControlsFrame
+from .ui_components.playlist_selector import PlaylistSelector
+
+# --- Constants ---
+APP_TITLE = "Advanced Downloader"
+INITIAL_GEOMETRY = "850x750"  # Initial window size
+DEFAULT_STATUS = "Initializing..."
+DEFAULT_STATUS_COLOR = "gray"
 
 
-# The main UI class now inherits from CTk and the three Mixins
+# The main UI class now inherits from CTk window and the functional Mixins
 class UserInterface(
     ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActionHandlerMixin
 ):
@@ -30,35 +35,47 @@ class UserInterface(
     Main application window.
     Initializes UI components and inherits functionality from Mixin classes for:
     - State management (UIStateManagerMixin)
-    - Callback handling (UICallbackHandlerMixin)
-    - User action handling (UIActionHandlerMixin)
+    - Callback handling from logic layer (UICallbackHandlerMixin)
+    - Handling user actions like button clicks (UIActionHandlerMixin)
     """
 
-    def __init__(self, logic_handler):
+    def __init__(self, logic_handler: Optional[LogicHandler] = None) -> None:
         """
-        Initializes the main window, creates UI components, and sets initial state.
+        Initializes the main window, creates UI components, links logic, and sets initial state.
         Args:
-            logic_handler: Instance of the LogicHandler (can be None initially).
+            logic_handler (Optional[LogicHandler]): Instance of the LogicHandler.
+                                                     Can be None initially and set later.
         """
-        super().__init__()
+        super().__init__()  # Initialize the CTk window
 
         # --- Instance Attributes ---
-        self.logic = logic_handler
-        self.fetched_info = None
-        self.current_operation = None
-        self._last_toggled_playlist_mode = True
+        # Logic Handler (can be set after initialization)
+        self.logic: Optional[LogicHandler] = logic_handler
+        # Data fetched from URL
+        self.fetched_info: Optional[Dict[str, Any]] = None
+        # Tracks the current background operation ('fetch' or 'download')
+        self.current_operation: Optional[str] = None
+        # Stores user's last explicit playlist switch preference
+        self._last_toggled_playlist_mode: bool = (
+            True  # Default to playlist mode ON preference
+        )
 
         # --- Basic Window Setup ---
-        self.title("Advanced Downloader")
-        self.geometry("850x750")
-        ctk.set_appearance_mode("System")
-        ctk.set_default_color_theme("blue")
+        self.title(APP_TITLE)
+        self.geometry(INITIAL_GEOMETRY)
+        # Appearance settings (consider making these configurable)
+        ctk.set_appearance_mode("System")  # Follow system theme (Light/Dark)
+        ctk.set_default_color_theme("blue")  # Set theme color
 
         # --- Main Grid Configuration ---
+        # Make the main column expandable
         self.grid_columnconfigure(0, weight=1)
+        # Make the row containing the playlist selector expandable (row 4)
         self.grid_rowconfigure(4, weight=1)
+        # Add weights to other rows if needed for specific resize behavior
 
         # --- Create UI Component Instances ---
+        # Pass 'self' as master and necessary callbacks from ActionHandlerMixin
         self.top_frame_widget = TopInputFrame(self, fetch_command=self.fetch_video_info)
         self.options_frame_widget = OptionsControlFrame(
             self, toggle_playlist_command=self.toggle_playlist_mode
@@ -66,57 +83,67 @@ class UserInterface(
         self.path_frame_widget = PathSelectionFrame(
             self, browse_callback=self.browse_path_logic
         )
-        self.playlist_selector_widget = PlaylistSelector(self)
+        self.playlist_selector_widget = PlaylistSelector(
+            self
+        )  # Scrollable frame for playlist items
         self.bottom_controls_widget = BottomControlsFrame(
             self,
             download_command=self.start_download_ui,
             cancel_command=self.cancel_operation_ui,
         )
+        # Label for dynamic content (Video title or Playlist title)
         self.dynamic_area_label = ctk.CTkLabel(
-            self, text="", font=ctk.CTkFont(weight="bold")
+            self, text="", font=ctk.CTkFont(weight="bold")  # Start empty
         )
+        # Progress Bar
         self.progress_bar = ctk.CTkProgressBar(self)
+        self.progress_bar.set(0)  # Initialize progress to 0
+
+        # Status Label at the bottom
         self.status_label = ctk.CTkLabel(
             self,
-            text="Initializing...",
-            text_color="gray",
+            text=DEFAULT_STATUS,
+            text_color=DEFAULT_STATUS_COLOR,
             font=ctk.CTkFont(size=13),
-            justify="left",
-            anchor="w",
+            justify="left",  # Justify left for multi-line status
+            anchor="w",  # Anchor text to the west (left)
         )
 
-        # --- Grid the UI Components ---
+        # --- Grid the UI Components into the Main Window ---
+        # Order matters for layout and row numbers
         self.top_frame_widget.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
         self.options_frame_widget.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
         self.path_frame_widget.grid(row=2, column=0, padx=15, pady=5, sticky="ew")
         self.dynamic_area_label.grid(row=3, column=0, padx=20, pady=(10, 0), sticky="w")
-        # self.playlist_selector_widget is gridded dynamically
+        # Playlist selector (row 4) is gridded dynamically by _display_playlist_view
+        # self.playlist_selector_widget.grid(...) # Done in state manager
         self.bottom_controls_widget.grid(
             row=6, column=0, padx=15, pady=(5, 5), sticky="ew"
-        )
+        )  # Below potential playlist
         self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 5), sticky="ew")
         self.status_label.grid(row=8, column=0, padx=25, pady=(0, 10), sticky="ew")
 
-        # --- Enter Initial State ---
+        # --- Enter Initial UI State ---
+        # Call the state management method to set up the initial idle appearance
         self._enter_idle_state()
 
-    # --- إضافة: دالة لتعيين مسار الحفظ الافتراضي --- Start: Method for default save path ---
-    def set_default_save_path(self, path: str):
+    def set_default_save_path(self, path: str) -> None:
         """
         Sets the initial text in the save path entry widget.
         Called by main.py after finding the default path.
+
+        Args:
+            path (str): The default save path string.
         """
-        if self.path_frame_widget:  # التأكد من وجود الويدجت Ensure widget exists
+        if self.path_frame_widget:  # Ensure widget exists
             try:
                 self.path_frame_widget.set_path(path)
                 print(f"UI: Default save path set to '{path}'")
-                # قد تحتاج إلى إعادة تمكين زر التحميل هنا إذا كان قد تم تعطيله
-                # لأنه لم يكن هناك مسار. يتم التعامل مع هذا الآن في _enter_info_fetched_state.
-                # May need to re-enable download button here if it was disabled
-                # due to no path. This is now handled in _enter_info_fetched_state.
+                # If info was fetched *before* default path was set,
+                # we might need to re-evaluate the download button state.
+                # This is now handled within _enter_info_fetched_state.
             except Exception as e:
                 print(f"UI Error: Could not set default path in widget: {e}")
         else:
+            # This shouldn't happen if called after __init__
             print("UI Error: Path frame widget not available to set default path.")
-
-    # --- إضافة: دالة لتعيين مسار الحفظ الافتراضي --- End: Method for default save path ---
