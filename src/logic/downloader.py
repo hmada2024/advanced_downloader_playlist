@@ -1,4 +1,4 @@
-# src/downloader.py
+# src/logic/downloader.py
 # -- ملف يحتوي على كلاس التحميل الرئيسي المنسق --
 # Purpose: Contains the main coordinating Downloader class.
 
@@ -18,11 +18,10 @@ from yt_dlp.utils import (
     ExtractorError as YtdlpExtractorError,
 )
 
-# Imports from current package
+# --- Imports from current package (using relative imports) ---
+# Use '.' to import from the same directory (logic)
 from .exceptions import DownloadCancelled
-from .utils import (
-    clean_filename,
-)  # Keep clean_filename accessible if needed by _update_status
+from .utils import clean_filename  # Changed from logic_utils
 from .downloader_constants import *  # استيراد جميع الثوابت
 from .downloader_hooks import (
     ProgressHookHandler,

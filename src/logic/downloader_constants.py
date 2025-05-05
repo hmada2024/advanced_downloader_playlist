@@ -1,4 +1,4 @@
-# src/downloader_constants.py
+# src/logic/downloader_constants.py
 # -- ملف يحتوي على الثوابت المستخدمة في عملية التحميل --
 
 from typing import Set

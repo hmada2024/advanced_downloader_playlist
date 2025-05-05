@@ -1,4 +1,4 @@
-# src/downloader_utils.py
+# src/logic/downloader_utils.py
 # -- ملف يحتوي على دوال مساعدة لعملية التحميل --
 
 import re
@@ -7,7 +7,8 @@ from typing import Callable, Dict, Any, Optional, List, Tuple, Union
 from pathlib import Path
 import threading  # For Event type hint
 
-# Imports from current package
+# --- Imports from current package (using relative imports) ---
+# Use '.' to import from the same directory (logic)
 from .exceptions import DownloadCancelled
 from .downloader_constants import (
     FORMAT_AUDIO_MP3,

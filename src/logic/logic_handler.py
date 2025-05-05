@@ -1,14 +1,15 @@
-# src/logic_handler.py
+# src/logic/logic_handler.py
 # -- ملف يحتوي على الكلاس المنسق لعمليات المنطق --
 # Purpose: Contains the coordinating class for logic operations.
 
 import threading
-from typing import Callable, Dict, Any, Optional  # Added typing imports
+from typing import Callable, Dict, Any, Optional
 
-# Imports from current package
+# --- Imports from current package (using relative imports) ---
+# Use '.' to import from the same directory (logic)
 from .info_fetcher import InfoFetcher
 from .downloader import Downloader
-from .utils import find_ffmpeg
+from .utils import find_ffmpeg  # Renamed from logic_utils
 from .exceptions import DownloadCancelled
 
 # --- Constants ---

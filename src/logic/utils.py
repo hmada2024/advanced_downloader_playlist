@@ -1,4 +1,4 @@
-# src/logic_utils.py
+# src/logic/utils.py
 # -- ملف يحتوي على دوال مساعدة عامة للمنطق --
 # Purpose: Contains general helper functions for the logic part.
 
@@ -37,9 +37,11 @@ def find_ffmpeg() -> Optional[str]:
             base_path = Path(sys.executable).parent
         else:
             # Running as a script
-            base_path = (
-                Path(__file__).resolve().parent.parent
-            )  # Assumes src is one level down from root
+            # <<<--- Adjustment Needed Here based on where find_ffmpeg is called from --- >>>
+            # If utils.py is in src/logic, and ffmpeg_bin is at the project root (sibling to src),
+            # the path needs to go up two levels from utils.py (logic -> src -> project root)
+            base_path = Path(__file__).resolve().parent.parent.parent
+            # print(f"Script mode: Calculated base path: {base_path}") # Debug print
     except Exception as e:
         print(f"Error determining base path: {e}")
         base_path = Path(".")  # Fallback to current directory
@@ -49,6 +51,8 @@ def find_ffmpeg() -> Optional[str]:
     bundled_ffprobe_path: Path = (
         base_path / "ffmpeg_bin" / "ffprobe.exe"
     )  # Also check ffprobe
+
+    # print(f"Checking bundled path: {bundled_ffmpeg_path}") # Debug print
 
     if bundled_ffmpeg_path.is_file():
         if bundled_ffprobe_path.is_file():

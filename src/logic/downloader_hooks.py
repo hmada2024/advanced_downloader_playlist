@@ -1,4 +1,4 @@
-# src/downloader_hooks.py
+# src/logic/downloader_hooks.py
 # -- ملف يحتوي على كلاسات معالجة الـ Hooks لعملية التحميل --
 
 import os
@@ -12,15 +12,16 @@ import threading  # For Event type hinting
 # Import exceptions and utils from yt-dlp
 from yt_dlp.utils import DownloadCancelled as YtdlpDownloadCancelled
 
-# Imports from current package
+# --- Imports from current package (using relative imports) ---
+# Use '.' to import from the same directory (logic)
 from .exceptions import DownloadCancelled
-from .utils import clean_filename  # Needed for postprocessor renaming
+from .utils import clean_filename  # Changed from logic_utils
 from .downloader_constants import *  # Import all constants
 from .downloader_utils import check_cancel  # Import check_cancel utility
 
 # Conditional import for type hinting Downloader to avoid circular dependency
 if TYPE_CHECKING:
-    from .downloader import Downloader
+    from .downloader import Downloader  # Use relative import here too
 
 
 class ProgressHookHandler:

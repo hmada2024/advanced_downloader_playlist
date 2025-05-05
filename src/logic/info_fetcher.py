@@ -1,11 +1,13 @@
-# src/info_fetcher.py
+# src/logic/info_fetcher.py
 # -- ملف يحتوي على كلاس جلب المعلومات --
 # Purpose: Contains the InfoFetcher class responsible for fetching metadata.
 
 import yt_dlp
 import traceback
-from typing import Callable, Dict, Any, Optional, List  # Added typing imports
+import threading  # Changed from Any for cancel_event type hint
+from typing import Callable, Dict, Any, Optional, List
 
+# --- Imports from current package (using relative imports) ---
 from .exceptions import DownloadCancelled
 
 # --- Constants ---
@@ -29,7 +31,7 @@ class InfoFetcher:
     def __init__(
         self,
         url: str,
-        cancel_event: Any,  # threading.Event is tricky for typing stub files, use Any for simplicity
+        cancel_event: threading.Event,  # Use threading.Event type hint
         success_callback: Callable[[Dict[str, Any]], None],
         error_callback: Callable[[str], None],
         status_callback: Callable[[str], None],
@@ -41,7 +43,7 @@ class InfoFetcher:
 
         Args:
             url (str): The URL to fetch information from.
-            cancel_event (Any): A threading.Event object to signal cancellation.
+            cancel_event (threading.Event): A threading.Event object to signal cancellation.
             success_callback (Callable[[Dict[str, Any]], None]): Callback on success, receives info dict.
             error_callback (Callable[[str], None]): Callback on error, receives error message.
             status_callback (Callable[[str], None]): Callback for status updates.
@@ -49,9 +51,7 @@ class InfoFetcher:
             finished_callback (Callable[[], None]): Callback when the operation finishes (success, error, or cancel).
         """
         self.url: str = url
-        self.cancel_event = (
-            cancel_event  # Keep as Any or use 'threading.Event' if typing stubs allow
-        )
+        self.cancel_event: threading.Event = cancel_event
         self.success_callback: Callable[[Dict[str, Any]], None] = success_callback
         self.error_callback: Callable[[str], None] = error_callback
         self.status_callback: Callable[[str], None] = status_callback

@@ -1,30 +1,33 @@
-# src/ui_interface.py
+# src/ui/ui_interface.py
 # -- Main application UI window class and coordinator between components --
 # -- Modified to include TabView for Home and History --
 
 import customtkinter as ctk
-from typing import Optional, Dict, Any, Callable  # استيراد أنواع البيانات للتلميحات
+from typing import Optional, Dict, Any, Callable
 
 # --- استيراد كلاسات المنطق والـ Handler ---
 # استخدام Optional لأن logic_handler قد يتم حقنه بعد الإنشاء
-from ..logic_handler import LogicHandler, Optional
+# استخدم '..' للخروج من مجلد 'ui' والوصول إلى 'logic'
+from ..logic.logic_handler import LogicHandler, Optional
 
-# استيراد كلاسات Mixin (التي توفر وظائف لـ UserInterface)
-from ..ui_state_manager import UIStateManagerMixin
-from ..ui_callback_handler import UICallbackHandlerMixin
-from ..ui_action_handler import UIActionHandlerMixin
+# --- استيراد كلاسات Mixin (التي توفر وظائف لـ UserInterface) ---
+# استخدم '.' للاستيراد من نفس المجلد 'ui'
+from .state_manager import UIStateManagerMixin
+from .callback_handler import UICallbackHandlerMixin
+from .action_handler import UIActionHandlerMixin
 
 # --- استيراد كلاسات مكونات الواجهة ---
-from ..ui_components.top_input_frame import TopInputFrame
-from ..ui_components.options_control_frame import OptionsControlFrame
-from ..ui_components.path_selection_frame import PathSelectionFrame
-from ..ui_components.bottom_controls_frame import BottomControlsFrame
-from ..ui_components.playlist_selector import PlaylistSelector
+# استخدم '.' للاستيراد من نفس المجلد 'ui'، ثم ادخل 'components'
+from .components.top_input_frame import TopInputFrame
+from .components.options_control_frame import OptionsControlFrame
+from .components.path_selection_frame import PathSelectionFrame
+from .components.bottom_controls_frame import BottomControlsFrame
+from .components.playlist_selector import PlaylistSelector
 
 # --- الثوابت ---
 APP_TITLE = "Advanced Downloader"  # عنوان التطبيق
 INITIAL_GEOMETRY = "850x750"  # حجم النافذة الأولي
-DEFAULT_STATUS = "جارٍ التهيئة..."  # رسالة الحالة الافتراضية
+DEFAULT_STATUS = "Initializing..."  # تم تغيير رسالة الحالة الافتراضية
 DEFAULT_STATUS_COLOR = "gray"  # لون الحالة الافتراضي
 TAB_HOME = "Home"  # اسم تبويب الصفحة الرئيسية
 TAB_HISTORY = "History"  # اسم تبويب السجل
@@ -115,6 +118,7 @@ class UserInterface(
             self.home_tab_frame,  # الـ master الآن هو تبويب Home
             text="",
             font=ctk.CTkFont(weight="bold"),
+            wraplength=650,  # Added wraplength to prevent very long titles from expanding window
         )
         # محدد قائمة التشغيل (إطار قابل للتمرير لعناصر قائمة التشغيل) داخل تبويب Home
         self.playlist_selector_widget = PlaylistSelector(
@@ -136,11 +140,11 @@ class UserInterface(
         # محدد قائمة التشغيل (row 4) يتم وضعه في الشبكة ديناميكيًا بواسطة _display_playlist_view (داخل home_tab_frame)
         # self.playlist_selector_widget.grid(...) # يتم بواسطة مدير الحالة
         self.bottom_controls_widget.grid(
-            row=6,
+            row=6,  # Adjusted row to leave space for playlist
             column=0,
             padx=15,
             pady=(5, 5),
-            sticky="ew",  # أسفل قائمة التشغيل المحتملة
+            sticky="ew",
         )
 
         # --- إنشاء الويدجتس أسفل عرض التبويبات (في النافذة الرئيسية) ---
@@ -165,13 +169,12 @@ class UserInterface(
 
         # --- محتوى تبويب السجل (History) (عنصر نائب) ---
         # ترك إطار history_tab_frame فارغًا الآن
-        # يمكنك إضافة ليبل بسيط كعنصر نائب إذا أردت:
-        # history_placeholder = ctk.CTkLabel(self.history_tab_frame, text="سيتم عرض السجل هنا.")
-        # history_placeholder.pack(padx=20, pady=20)
+        history_placeholder = ctk.CTkLabel(
+            self.history_tab_frame, text="History will be shown here."
+        )
+        history_placeholder.pack(padx=20, pady=20)
 
         # --- الدخول في حالة الواجهة الأولية ---
-        # استدعاء دالة إدارة الحالة لإعداد المظهر الخامل الأولي
-        # يجب أن تعمل هذه الدالة كما هي لأنها تشير إلى الويدجتس المخزنة في 'self'
         self._enter_idle_state()
 
     def set_default_save_path(self, path: str) -> None:
@@ -182,31 +185,17 @@ class UserInterface(
         Args:
             path (str): The default save path string.
         """
-        # يجب أن تعمل هذه الدالة بشكل صحيح لأن self.path_frame_widget موجود
-        if self.path_frame_widget:  # التأكد من وجود الويدجت
+        if self.path_frame_widget:
             try:
-                self.path_frame_widget.set_path(path)  # تعيين المسار
-                print(f"UI: تم تعيين مسار الحفظ الافتراضي إلى '{path}'")
-                # إذا تم جلب المعلومات *قبل* تعيين المسار الافتراضي،
-                # قد نحتاج إلى إعادة تقييم حالة زر التحميل.
-                # يتم التعامل مع هذا الآن داخل _enter_info_fetched_state.
+                self.path_frame_widget.set_path(path)
+                print(f"UI: Default save path set to '{path}'")
             except Exception as e:
-                print(
-                    f"خطأ في واجهة المستخدم: تعذر تعيين المسار الافتراضي في الويدجت: {e}"
-                )
+                print(f"UI Error: Could not set default path in widget: {e}")
         else:
-            # لا يجب أن يحدث هذا إذا تم استدعاؤه بعد __init__
-            print(
-                "خطأ في واجهة المستخدم: ويدجت إطار المسار غير متاح لتعيين المسار الافتراضي."
-            )
+            print("UI Error: Path frame widget not available to set default path.")
 
 
 # --- دوال Mixin ---
-# الدوال الموروثة من UIStateManagerMixin, UICallbackHandlerMixin,
-# و UIActionHandlerMixin يجب أن تستمر في العمل بشكل عام لأنها
-# تصل إلى الويدجتس عبر `self.widget_name` (مثل self.top_frame_widget,
-# self.bottom_controls_widget)، وما زلنا نخزن هذه المراجع في `self`
-# حتى لو تغير الـ master الخاص بالويدجتس إلى `self.home_tab_frame`.
-# تأكد من أن أي عمليات grid داخل mixins تتعامل بشكل صحيح مع السياق
-# (على سبيل المثال، `self.playlist_selector_widget.grid(...)` ستضع في شبكة الـ master الخاص بها،
-# والذي هو الآن `home_tab_frame`).
+# The inherited methods from mixins should generally continue to work
+# as they access widgets via `self.widget_name`. The placement of widgets
+# (gridding) is handled either here in __init__ or in the state manager mixin.

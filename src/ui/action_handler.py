@@ -1,17 +1,30 @@
-# src/ui_action_handler.py
+# src/ui/action_handler.py
 # -- Mixin class for handling user actions from the UI --
 
-import os # Needed for isdir check
+import os  # Needed for isdir check
 from tkinter import filedialog, messagebox
 from typing import TYPE_CHECKING, Optional, Dict, Any, Callable
 
-from src.ui_state_manager import BTN_TXT_DOWNLOAD_SELECTION, BTN_TXT_DOWNLOAD_VIDEO, LABEL_EMPTY # Added typing
-
+# --- Imports from current package/subpackages ---
+# Use '.' for imports from the same directory (ui)
+# Use '..' for imports from the parent directory (src) then 'logic'
 # Conditional import for type hinting
 if TYPE_CHECKING:
-    import customtkinter as ctk
-    from .ui.ui_interface import UserInterface
-    from .logic_handler import LogicHandler
+    import customtkinter as ctk  # Keep this standard import
+    from .ui_interface import UserInterface  # From same directory (ui)
+    from ..logic.logic_handler import LogicHandler  # From parent's logic directory
+
+# --- Constants ---
+# Import constants from state_manager (assuming they are defined there or kept here)
+# For simplicity, redefine them here if they are UI specific button texts/labels
+# If they were in state_manager, use: from .state_manager import BTN_TXT_DOWNLOAD_SELECTION, ...
+BTN_TXT_DOWNLOAD = "Download"
+BTN_TXT_FETCHING = "Fetching..."
+BTN_TXT_DOWNLOADING = "Downloading..."
+BTN_TXT_DOWNLOAD_SELECTION = "Download Selection"
+BTN_TXT_DOWNLOAD_VIDEO = "Download Video"
+BTN_TXT_SELECT_SAVE_LOCATION = "Select Save Location"
+LABEL_EMPTY = ""  # Assuming empty label text is needed
 
 # --- Constants for Message Box Titles and Messages ---
 # Titles
@@ -20,7 +33,7 @@ TITLE_PATH_ERROR = "Path Error"
 TITLE_SELECTION_ERROR = "Selection Error"
 TITLE_CONFIRM_SINGLE = "Confirm Single Download"
 TITLE_LOGIC_ERROR = "Logic Error"
-TITLE_ERROR = "Error" # Generic error title
+TITLE_ERROR = "Error"  # Generic error title
 
 # Messages
 MSG_URL_EMPTY = "Please enter a URL."
@@ -44,17 +57,24 @@ class UIActionHandlerMixin:
 
     # Type hints for attributes assumed to exist in the main class
     if TYPE_CHECKING:
-        self: 'UserInterface' # Assume UserInterface context
-        # Widgets (assuming types defined/imported in UserInterface)
-        path_frame_widget: Any # PathSelectionFrame
-        top_frame_widget: Any # TopInputFrame
-        bottom_controls_widget: Any # BottomControlsFrame
-        playlist_selector_widget: Any # PlaylistSelector
-        options_frame_widget: Any # OptionsControlFrame
-        dynamic_area_label: ctk.CTkLabel
+        self: "UserInterface"  # Assume UserInterface context
+        # Widgets (assuming types defined/imported in UserInterface or components)
+        # We need to hint the component types more accurately now
+        from .components.path_selection_frame import PathSelectionFrame
+        from .components.top_input_frame import TopInputFrame
+        from .components.bottom_controls_frame import BottomControlsFrame
+        from .components.playlist_selector import PlaylistSelector
+        from .components.options_control_frame import OptionsControlFrame
+
+        path_frame_widget: PathSelectionFrame
+        top_frame_widget: TopInputFrame
+        bottom_controls_widget: BottomControlsFrame
+        playlist_selector_widget: PlaylistSelector
+        options_frame_widget: OptionsControlFrame
+        dynamic_area_label: ctk.CTkLabel  # Standard CTk widget
         # Attributes
         fetched_info: Optional[Dict[str, Any]]
-        logic: Optional[LogicHandler] # Instance of LogicHandler
+        logic: Optional[LogicHandler]  # Instance of LogicHandler
         current_operation: Optional[str]
         _last_toggled_playlist_mode: bool
         # Methods from other mixins/main class
@@ -63,7 +83,6 @@ class UIActionHandlerMixin:
         _enter_info_fetched_state: Callable[[], None]
         _enter_idle_state: Callable[[], None]
         update_status: Callable[[str], None]
-
 
     def browse_path_logic(self) -> None:
         """Opens directory dialog, updates path widget, and enables download if appropriate."""
@@ -74,23 +93,31 @@ class UIActionHandlerMixin:
             # Check if download should be enabled *now*
             # Requires info to be fetched and the path to be a valid directory
             if self.fetched_info and os.path.isdir(directory):
-                 # Check if download button was previously disabled (e.g., due to no path)
-                is_download_disabled = self.bottom_controls_widget.download_button.cget("state") == "disabled"
+                # Check if download button was previously disabled (e.g., due to no path)
+                is_download_disabled = (
+                    self.bottom_controls_widget.download_button.cget("state")
+                    == "disabled"
+                )
                 if is_download_disabled:
                     # Determine appropriate button text based on current mode
                     is_playlist_mode = self.options_frame_widget.get_playlist_mode()
-                    is_actually_playlist = isinstance(self.fetched_info.get("entries"), list)
+                    is_actually_playlist = isinstance(
+                        self.fetched_info.get("entries"), list
+                    )
                     show_playlist_view = is_playlist_mode and is_actually_playlist
-                    btn_text = BTN_TXT_DOWNLOAD_SELECTION if show_playlist_view else BTN_TXT_DOWNLOAD_VIDEO
+                    btn_text = (
+                        BTN_TXT_DOWNLOAD_SELECTION
+                        if show_playlist_view
+                        else BTN_TXT_DOWNLOAD_VIDEO
+                    )
                     self.bottom_controls_widget.enable_download(button_text=btn_text)
             elif not os.path.isdir(directory):
-                 # Show warning if selected path is somehow not a directory
-                 # (askdirectory should prevent this, but good to double-check)
-                 messagebox.showwarning(
+                # Show warning if selected path is somehow not a directory
+                # (askdirectory should prevent this, but good to double-check)
+                messagebox.showwarning(
                     TITLE_PATH_ERROR,
                     MSG_PATH_INVALID_DIR.format(path=directory),
-                 )
-
+                )
 
     def fetch_video_info(self) -> None:
         """Initiates the process to fetch info for the entered URL."""
@@ -101,7 +128,7 @@ class UIActionHandlerMixin:
 
         # Reset previous fetch results and UI elements related to fetched info
         self.fetched_info = None
-        self.playlist_selector_widget.grid_remove() # Hide playlist view
+        self.playlist_selector_widget.grid_remove()  # Hide playlist view
         self.dynamic_area_label.configure(text=LABEL_EMPTY)
         # Don't clear URL input, user might want to retry the same URL
 
@@ -109,14 +136,14 @@ class UIActionHandlerMixin:
         self.current_operation = OP_FETCH
         # Store the current playlist switch state before fetching
         self._last_toggled_playlist_mode = self.options_frame_widget.get_playlist_mode()
-        self._enter_fetching_state() # Update UI for fetching
+        self._enter_fetching_state()  # Update UI for fetching
 
         # Call the logic handler to start the background fetch operation
         if self.logic:
             self.logic.start_info_fetch(url)
         else:
-            self._extracted_from_start_download_ui_24()
-
+            # Keep the extracted method call consistent
+            self._handle_missing_logic_handler()
 
     def toggle_playlist_mode(self) -> None:
         """Handles the manual toggling of the 'Is Playlist?' switch."""
@@ -128,7 +155,6 @@ class UIActionHandlerMixin:
         if self.fetched_info:
             # This will show/hide the playlist view and update button text accordingly
             self._enter_info_fetched_state()
-
 
     def start_download_ui(self) -> None:
         """Initiates the download process based on current selections."""
@@ -145,7 +171,7 @@ class UIActionHandlerMixin:
         if not save_path:
             messagebox.showerror(TITLE_ERROR, MSG_SAVE_PATH_MISSING)
             return
-        if not os.path.isdir(save_path): # Check if save path is valid directory
+        if not os.path.isdir(save_path):  # Check if save path is valid directory
             messagebox.showerror(TITLE_ERROR, MSG_SAVE_PATH_INVALID)
             return
         if not self.fetched_info:
@@ -166,30 +192,40 @@ class UIActionHandlerMixin:
         # --- Logic based on playlist mode and actual content ---
         if is_playlist_mode_on and is_actually_playlist:
             # Case 1: Playlist mode ON, content IS a playlist
-            playlist_items_string = self.playlist_selector_widget.get_selected_items_string()
+            playlist_items_string = (
+                self.playlist_selector_widget.get_selected_items_string()
+            )
             if not playlist_items_string:
-                messagebox.showwarning(TITLE_SELECTION_ERROR, MSG_NO_PLAYLIST_ITEMS_SELECTED)
+                messagebox.showwarning(
+                    TITLE_SELECTION_ERROR, MSG_NO_PLAYLIST_ITEMS_SELECTED
+                )
                 return
             selected_items_count = len(playlist_items_string.split(","))
             print(
                 f"UI: Starting playlist download. Selected: {selected_items_count}, Total: {total_playlist_count}, Items: {playlist_items_string}, Format: {format_choice}"
             )
-            is_download_target_playlist = True # Flag for logic handler
+            is_download_target_playlist = True  # Flag for logic handler
 
         elif not is_playlist_mode_on and self.fetched_info:
             # Case 2: Playlist mode OFF (or content is NOT a playlist)
             if is_actually_playlist:
-                 # Content IS playlist, but mode is OFF - Confirm single download
-                if not messagebox.askyesno(TITLE_CONFIRM_SINGLE, MSG_CONFIRM_SINGLE_BODY):
-                    return # User cancelled
-                 # User confirmed, proceed to download first item (handled by yt-dlp without playlist_items)
-                print(f"UI: Starting single item download (first from playlist). Format: {format_choice}")
+                # Content IS playlist, but mode is OFF - Confirm single download
+                if not messagebox.askyesno(
+                    TITLE_CONFIRM_SINGLE, MSG_CONFIRM_SINGLE_BODY
+                ):
+                    return  # User cancelled
+                # User confirmed, proceed to download first item (handled by yt-dlp without playlist_items)
+                print(
+                    f"UI: Starting single item download (first from playlist). Format: {format_choice}"
+                )
             else:
-                 # Content is NOT a playlist, download normally
-                 print(f"UI: Starting single video download. Format: {format_choice}")
+                # Content is NOT a playlist, download normally
+                print(f"UI: Starting single video download. Format: {format_choice}")
 
-            selected_items_count = 1 # We are downloading one item
-            is_download_target_playlist = False # Tell logic handler it's single item download
+            selected_items_count = 1  # We are downloading one item
+            is_download_target_playlist = (
+                False  # Tell logic handler it's single item download
+            )
 
         # This case should ideally be prevented by disabling the switch if not a playlist
         # elif not is_actually_playlist and is_playlist_mode_on:
@@ -204,27 +240,27 @@ class UIActionHandlerMixin:
 
         # --- Initiate Download ---
         self.current_operation = OP_DOWNLOAD
-        self._enter_downloading_state() # Update UI for downloading
+        self._enter_downloading_state()  # Update UI for downloading
 
         if self.logic:
             self.logic.start_download(
                 url=url,
                 save_path=save_path,
                 format_choice=format_choice,
-                is_playlist=is_download_target_playlist, # Pass the determined flag
-                playlist_items=playlist_items_string, # Pass selected items string (None if single)
+                is_playlist=is_download_target_playlist,  # Pass the determined flag
+                playlist_items=playlist_items_string,  # Pass selected items string (None if single)
                 selected_items_count=selected_items_count,
                 total_playlist_count=total_playlist_count,
             )
         else:
-            self._extracted_from_start_download_ui_24()
+            # Keep the extracted method call consistent
+            self._handle_missing_logic_handler()
 
-    # TODO Rename this here and in `fetch_video_info` and `start_download_ui`
-    def _extracted_from_start_download_ui_24(self):
+    def _handle_missing_logic_handler(self):
+        """Handles the case where the logic handler is missing."""
         print(MSG_LOGIC_HANDLER_MISSING)
         self.update_status(MSG_LOGIC_HANDLER_MISSING)
         self._enter_idle_state()
-
 
     def cancel_operation_ui(self) -> None:
         """Requests cancellation of the active background operation."""
@@ -239,4 +275,4 @@ class UIActionHandlerMixin:
         else:
             # Should not happen if buttons are managed correctly, but handle defensively
             print("UI_Interface: No logic handler available to cancel.")
-            self._enter_idle_state() # Reset UI if logic is missing
+            self._enter_idle_state()  # Reset UI if logic is missing
