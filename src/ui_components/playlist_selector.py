@@ -1,139 +1,157 @@
-# src/ui_components/playlist_selector.py
 # -- ملف لمكون الواجهة الخاص بعرض واختيار عناصر قائمة التشغيل --
+# Purpose: UI component for displaying and selecting playlist items.
 
 import customtkinter as ctk
-import logging  # <-- إضافة استيراد logging
 
-
+# كلاس يمثل الإطار القابل للتمرير لعناصر القائمة
+# Class representing the scrollable frame for playlist items
 class PlaylistSelector(ctk.CTkScrollableFrame):
     def __init__(self, master, **kwargs):
+        """
+        تهيئة إطار اختيار عناصر القائمة.
+        Initializes the playlist item selection frame.
+        Args:
+            master: الويدجت الأب. Parent widget.
+        """
+        # استدعاء مُهيئ الأب مع تسمية للإطار
+        # Call parent initializer with a label for the frame
         super().__init__(master, label_text="Playlist Items", **kwargs)
-        logging.debug("PlaylistSelector initialized.")
-        self.checkboxes_data = []
 
+        self.checkboxes_data = [] # قائمة لتخزين بيانات مربعات الاختيار (widget, var, index) List to store checkbox data (widget, var, index)
+
+        # إطار داخلي لأزرار التحكم (Select All / Deselect All)
+        # Internal frame for control buttons (Select All / Deselect All)
         self.button_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.button_frame.pack(fill="x", pady=5, padx=5)
+        self.button_frame.pack(fill="x", pady=5, padx=5) # وضع الإطار في الأعلى Place the frame at the top
 
-        self.select_all_button = ctk.CTkButton(
-            self.button_frame, text="Select All", command=self.select_all
-        )
-        self.select_all_button.pack(side="left", padx=(0, 5))
-        self.deselect_all_button = ctk.CTkButton(
-            self.button_frame, text="Deselect All", command=self.deselect_all
-        )
+        # إنشاء أزرار التحكم ووضعها داخل إطار الأزرار
+        # Create control buttons and place them within the button frame
+        self.select_all_button = ctk.CTkButton(self.button_frame, text="Select All", command=self.select_all)
+        self.select_all_button.pack(side="left", padx=(0,5))
+        self.deselect_all_button = ctk.CTkButton(self.button_frame, text="Deselect All", command=self.deselect_all)
         self.deselect_all_button.pack(side="left", padx=5)
 
+        # تعطيل الأزرار مبدئيًا Disable buttons initially
         self.disable()
 
     def clear_items(self):
-        """Destroys old checkboxes and clears the internal list."""
-        logging.debug("PlaylistSelector: Clearing items.")
+        """
+        تدمير مربعات الاختيار القديمة ومسح القائمة الداخلية.
+        Destroys old checkboxes and clears the internal list.
+        """
         for cb, var, index in self.checkboxes_data:
-            if cb and isinstance(cb, (ctk.CTkCheckBox, ctk.CTkLabel)):
+            if cb and isinstance(cb, (ctk.CTkCheckBox, ctk.CTkLabel)): # التحقق من النوع Check type
                 try:
-                    cb.destroy()
+                    cb.destroy() # تدمير الويدجت Destroy widget
                 except Exception as e:
-                    # استخدام logging.error لتسجيل خطأ التدمير
-                    logging.error(
-                        f"PlaylistSelector: Error destroying playlist item widget: {e}"
-                    )
-        self.checkboxes_data = []
+                    print(f"Error destroying playlist item widget: {e}")
+        self.checkboxes_data = [] # مسح القائمة المنطقية Clear the logical list
+        # التأكد من تعطيل الأزرار عند عدم وجود عناصر Ensure buttons are disabled when no items
         self.disable()
 
     def populate_items(self, entries):
-        """Populates the frame with checkboxes for playlist items."""
-        logging.debug(
-            f"PlaylistSelector: Populating with {len(entries) if entries else 0} items."
-        )
-        self.clear_items()
+        """
+        تملأ الإطار بمربعات الاختيار لعناصر القائمة.
+        Populates the frame with checkboxes for playlist items.
+        """
+        self.clear_items() # مسح العناصر القديمة أولاً Clear old items first
 
         if not entries:
+            # عرض رسالة إذا كانت القائمة فارغة Display message if list is empty
             no_items_label = ctk.CTkLabel(self, text="No videos found in playlist.")
             no_items_label.pack(pady=5, padx=5, anchor="w")
+            # تخزين مؤقت للرسالة ليتم مسحها لاحقًا Temporarily store the label to be cleared later
             self.checkboxes_data.append((no_items_label, None, -1))
-            self.disable()
+            self.disable() # تعطيل الأزرار Disable buttons
             return
 
+        # تمكين الأزرار طالما هناك عناصر Enable buttons as long as there are items
         self.enable()
 
+        print(f"PlaylistSelector: Populating with {len(entries)} items.") # للدييباج For debugging
+        # إنشاء مربع اختيار لكل عنصر في القائمة Create a checkbox for each item in the list
         for index, entry in enumerate(entries):
-            if not entry:
-                logging.warning(
-                    f"PlaylistSelector: Found null entry at index {index}, skipping."
-                )
-                continue
+            if not entry: continue # تجاوز العناصر الفارغة المحتملة Skip potential null entries
 
-            video_index = entry.get("playlist_index") or (index + 1)
-            title = entry.get("title") or f"Video {video_index} (Untitled)"
+            video_index = entry.get('playlist_index') or (index + 1) # استخدام الفهرس من yt-dlp إن وجد Use index from yt-dlp if available
+            title = entry.get('title') or f'Video {video_index} (Untitled)' # الحصول على العنوان Get title
+
+            # قص العناوين الطويلة للعرض Truncate long titles for display
             max_len = 70
-            display_title = f"{title[:max_len]}..." if len(title) > max_len else title
+            display_title = (title[:max_len] + '...') if len(title) > max_len else title
 
-            var = ctk.StringVar(value="on")
-            cb = ctk.CTkCheckBox(
-                self,
-                text=f"{video_index}. {display_title}",
-                variable=var,
-                onvalue="on",
-                offvalue="off",
-            )
-            cb.pack(anchor="w", padx=10, pady=(2, 2), fill="x")
+            # إنشاء متغير وقيمة لمربع الاختيار Create variable and value for checkbox
+            var = ctk.StringVar(value="on") # تحديد الكل افتراضيًا Select all by default
+            cb = ctk.CTkCheckBox(self, text=f"{video_index}. {display_title}",
+                                 variable=var, onvalue="on", offvalue="off")
+            cb.pack(anchor="w", padx=10, pady=(2, 2), fill="x") # وضع مربع الاختيار Place checkbox
+
+            # تخزين مربع الاختيار ومتغيره وفهرسه في القائمة الداخلية Store checkbox, variable, and index in internal list
             self.checkboxes_data.append((cb, var, video_index))
-        logging.debug("PlaylistSelector: Finished packing checkboxes.")
+        print("PlaylistSelector: Finished packing checkboxes.") # للدييباج For debugging
 
     def select_all(self):
-        """Selects all checkboxes."""
-        logging.debug("PlaylistSelector: Select All clicked.")
+        """
+        تحديد جميع مربعات الاختيار.
+        Selects all checkboxes.
+        """
         for cb, var, index in self.checkboxes_data:
             if var and isinstance(var, ctk.StringVar):
-                var.set("on")
+                var.set("on") # تغيير قيمة المتغير المرتبط Change associated variable value
 
     def deselect_all(self):
-        """Deselects all checkboxes."""
-        logging.debug("PlaylistSelector: Deselect All clicked.")
+        """
+        إلغاء تحديد جميع مربعات الاختيار.
+        Deselects all checkboxes.
+        """
         for cb, var, index in self.checkboxes_data:
             if var and isinstance(var, ctk.StringVar):
-                var.set("off")
+                var.set("off") # تغيير قيمة المتغير المرتبط Change associated variable value
 
     def get_selected_items_string(self):
-        """Returns a comma-separated string of selected item indices."""
-        selected_indices = [
-            index
-            for cb, var, index in self.checkboxes_data
-            if cb and isinstance(cb, ctk.CTkCheckBox) and var and var.get() == "on"
-        ]
+        """
+        تُرجع سلسلة نصية تحتوي على فهارس العناصر المحددة (مفصولة بفواصل).
+        Returns a comma-separated string of selected item indices.
+        """
+        selected_indices = []
+        for cb, var, index in self.checkboxes_data:
+            # التأكد من أنه مربع اختيار صالح وتم تحديده Check if it's a valid checkbox and selected
+            if cb and isinstance(cb, ctk.CTkCheckBox) and var and var.get() == "on":
+                selected_indices.append(index) # إضافة الفهرس المخزن Add the stored index
+
         if not selected_indices:
-            logging.debug(
-                "PlaylistSelector: get_selected_items_string - No items selected."
-            )
-            return None
-        result = ",".join(map(str, sorted(selected_indices)))
-        logging.debug(
-            f"PlaylistSelector: get_selected_items_string - Selected: {result}"
-        )
-        return result
+            return None # لم يتم تحديد أي عنصر No item selected
+
+        # إرجاع الفهارس مفصولة بفواصل (بعد ترتيبها) Return indices separated by commas (after sorting)
+        return ",".join(map(str, sorted(selected_indices)))
 
     def reset(self):
-        """Resets the component."""
-        logging.debug("PlaylistSelector: Resetting.")
+        """
+        إعادة تعيين المكون (مسح العناصر وتعطيل الأزرار).
+        Resets the component (clears items and disables buttons).
+        """
         self.clear_items()
 
     def enable(self):
-        """Enables control buttons and checkboxes."""
-        self._extracted_from_disable_3(
-            "PlaylistSelector: Enabling controls.", "normal"
-        )
+        """
+        تمكين أزرار التحكم ومربعات الاختيار.
+        Enables control buttons and checkboxes.
+        """
+        self.select_all_button.configure(state="normal")
+        self.deselect_all_button.configure(state="normal")
+        # تمكين مربعات الاختيار الموجودة Enable existing checkboxes
+        for cb, var, index in self.checkboxes_data:
+             if cb and isinstance(cb, ctk.CTkCheckBox):
+                cb.configure(state="normal")
 
     def disable(self):
-        """Disables control buttons and checkboxes."""
-        self._extracted_from_disable_3(
-            "PlaylistSelector: Disabling controls.", "disabled"
-        )
-
-    # TODO Rename this here and in `enable` and `disable`
-    def _extracted_from_disable_3(self, arg0, state):
-        logging.debug(arg0)
-        self.select_all_button.configure(state=state)
-        self.deselect_all_button.configure(state=state)
+        """
+        تعطيل أزرار التحكم ومربعات الاختيار.
+        Disables control buttons and checkboxes.
+        """
+        self.select_all_button.configure(state="disabled")
+        self.deselect_all_button.configure(state="disabled")
+        # تعطيل مربعات الاختيار الموجودة Disable existing checkboxes
         for cb, var, index in self.checkboxes_data:
             if cb and isinstance(cb, ctk.CTkCheckBox):
-                cb.configure(state=state)
+                cb.configure(state="disabled")

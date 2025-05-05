@@ -1,0 +1,21 @@
+2025-05-03 20:37:31 - INFO - [main:33] - -----------------------------------
+2025-05-03 20:37:31 - INFO - [main:34] - Application starting...
+2025-05-03 20:37:31 - INFO - [main:35] - Log level set to: INFO
+2025-05-03 20:37:31 - INFO - [main:47] - Application __main__ block entered.
+2025-05-03 20:37:31 - INFO - [main:52] - Application running as frozen executable. Path: E:\advanced_downloader\dist
+2025-05-03 20:37:31 - INFO - [main:66] - Initializing UI...
+2025-05-03 20:37:31 - INFO - [ui_interface:57] - UserInterface: Attempting to set window icon from: C:\Users\hmada\AppData\Local\Temp\_MEI31402\assets\logo.ico
+2025-05-03 20:37:31 - INFO - [ui_interface:61] - UserInterface: Window icon set successfully.
+2025-05-03 20:37:31 - INFO - [ui_state_manager:26] - UIStateManager: Entering idle state.
+2025-05-03 20:37:31 - INFO - [main:68] - UI Initialized.
+2025-05-03 20:37:31 - INFO - [main:70] - Initializing Logic Handler...
+2025-05-03 20:37:31 - INFO - [logic_handler:32] - LogicHandler: Initializing...
+2025-05-03 20:37:31 - ERROR - [logic_utils:55] - Error checking for ffmpeg in PATH using yt-dlp: module yt_dlp.utils has no attribute ffmpeg_executable
+2025-05-03 20:37:31 - WARNING - [logic_utils:58] - ffmpeg executable not found in bundle or system PATH.
+2025-05-03 20:37:31 - WARNING - [logic_handler:37] - LogicHandler: FFmpeg not found by find_ffmpeg. Some operations like MP3 conversion might fail.
+2025-05-03 20:37:31 - INFO - [logic_handler:47] - LogicHandler: Initialization complete.
+2025-05-03 20:37:31 - INFO - [main:78] - Logic Handler Initialized.
+2025-05-03 20:37:31 - INFO - [main:82] - Logic Handler linked to UI.
+2025-05-03 20:37:31 - INFO - [main:85] - Starting main UI event loop (app.mainloop()).
+2025-05-03 20:38:39 - INFO - [main:87] - Application finished.
+2025-05-03 20:38:39 - INFO - [main:88] - -----------------------------------

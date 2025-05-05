@@ -5,8 +5,8 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('ffmpeg_bin', 'ffmpeg_bin')],
-    hiddenimports=[],
+    datas=[('ffmpeg_bin', 'ffmpeg_bin'), ('assets', 'assets'), ('e:\\advanced_downloader\\venv\\Lib\\site-packages\\customtkinter', 'customtkinter')],
+    hiddenimports=['platform', 'packaging', 'tkinter.font', 'darkdetect'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['assets\\logo.ico'],
 )

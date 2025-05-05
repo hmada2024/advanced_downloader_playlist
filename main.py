@@ -1,73 +1,69 @@
-# src/main.py
 # -- ملف نقطة الدخول الرئيسي لتشغيل التطبيق --
 # Purpose: Main entry point script to run the application.
 
 import customtkinter as ctk
-import sys
-import os
-import logging  # <-- إضافة استيراد logging
 
 # استيراد الكلاسات الرئيسية من حزمة src الجديدة
-from src.ui_interface import UserInterface
-from src.logic_handler import LogicHandler
-
-# --- *** تهيئة نظام التسجيل (Logging) *** ---
-log_file_path = "advanced_downloader.log"
-# تحديد مستوى التسجيل: INFO يظهر المعلومات العامة، التحذيرات، والأخطاء.
-# DEBUG يظهر كل شيء (مفيد للتطوير).
-# WARNING يظهر التحذيرات والأخطاء فقط.
-log_level = logging.INFO  # أو logging.DEBUG للتصحيح المفصل
-
-log_format = "%(asctime)s - %(levelname)s - [%(module)s:%(lineno)d] - %(message)s"
-date_format = "%Y-%m-%d %H:%M:%S"
-
-logging.basicConfig(
-    level=log_level,
-    format=log_format,
-    datefmt=date_format,
-    handlers=[
-        logging.FileHandler(log_file_path, encoding="utf-8"),  # الكتابة إلى ملف
-        logging.StreamHandler(sys.stdout),  # اختياري: العرض في الكونسول أيضاً
-    ],
-)
-logging.info("-----------------------------------")
-logging.info("Application starting...")
-logging.info(f"Log level set to: {logging.getLevelName(log_level)}")
-# --- *** نهاية تهيئة Logging *** ---
-
+# Import the main classes from the new src package
+from src.ui_interface import UserInterface  # <-- تم التعديل: استخدام src.
+from src.logic_handler import LogicHandler  # <-- تم التعديل: استخدام src.
+import sys
+import os
 
 # Optional High DPI handling (Uncomment if needed)
-# ... (كود set_high_dpi_awareness إذا كنت تستخدمه) ...
+# try:
+#     from ctypes import windll, byref, sizeof, c_int
+# except ImportError:
+#     pass # Ignore if not on Windows or ctypes not available
+
+# def set_high_dpi_awareness():
+#     """Attempts to set high DPI awareness for the application."""
+#     try:
+#         # PROCESS_SYSTEM_DPI_AWARE = 1, PROCESS_PER_MONITOR_DPI_AWARE = 2
+#         PROCESS_PER_MONITOR_DPI_AWARE_V2 = 2
+#         # Earlier Windows versions might only support 1 (System Aware)
+#         # Windows 10 Creators Update (1703) added support for 2 (Per-Monitor v2)
+#         windll.shcore.SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE_V2)
+#         print("High DPI awareness set (Per-Monitor v2).")
+#         return True
+#     except AttributeError:
+#         # Function doesn't exist (older Windows or non-Windows)
+#         print("Could not set Per-Monitor v2 DPI awareness (likely older Windows or not Windows).")
+#         try:
+#             # Try setting system DPI awareness instead
+#             windll.user32.SetProcessDPIAware()
+#             print("High DPI awareness set (System Aware).")
+#             return True
+#         except AttributeError:
+#             print("Could not set System DPI awareness.")
+#             return False
+#     except Exception as e:
+#         print(f"An error occurred while setting DPI awareness: {e}")
+#         return False
 
 # نقطة البداية عند تشغيل السكربت مباشرة
+# Entry point when script is run directly
 if __name__ == "__main__":
-    # --- Uncomment the line below to enable High DPI ---
+    # # --- Uncomment the line below to enable High DPI ---
     # set_high_dpi_awareness()
 
-    logging.info("Application __main__ block entered.")
-
     # التعامل مع مسار التطبيق عند التجميع بـ PyInstaller
+    # Handle application path when bundled with PyInstaller
     if getattr(sys, "frozen", False):
         application_path = os.path.dirname(sys.executable)
-        logging.info(
-            f"Application running as frozen executable. Path: {application_path}"
-        )
     else:
         try:
-            application_path = os.path.dirname(os.path.abspath(__file__))
-            logging.info(f"Application running as script. Path: {application_path}")
+            application_path = os.path.dirname(
+                os.path.abspath(__file__)
+            )  # Use abspath for reliability
         except NameError:
             application_path = os.getcwd()
-            logging.warning(
-                f"Could not determine script path, using current working directory: {application_path}"
-            )
 
-    # --- إنشاء مكونات التطبيق ---
-    logging.info("Initializing UI...")
-    app = UserInterface(logic_handler=None)  # تمرير None مؤقتاً
-    logging.info("UI Initialized.")
+    # --- إنشاء مكونات التطبيق --- Instantiate application components ---
+    # إنشاء نسخة الواجهة أولاً Create UI instance first
+    app = UserInterface(logic_handler=None)
 
-    logging.info("Initializing Logic Handler...")
+    # إنشاء نسخة المنطق وتمرير دوال الكول باك من الواجهة إليه Create logic instance and pass UI callbacks
     logic = LogicHandler(
         status_callback=app.update_status,
         progress_callback=app.update_progress,
@@ -75,14 +71,9 @@ if __name__ == "__main__":
         info_success_callback=app.on_info_success,
         info_error_callback=app.on_info_error,
     )
-    logging.info("Logic Handler Initialized.")
 
-    # ربط نسخة المنطق بنسخة الواجهة
+    # ربط نسخة المنطق بنسخة الواجهة Link logic instance to UI instance
     app.logic = logic
-    logging.info("Logic Handler linked to UI.")
 
-    # --- تشغيل حلقة الأحداث الرئيسية للواجهة ---
-    logging.info("Starting main UI event loop (app.mainloop()).")
+    # --- تشغيل حلقة الأحداث الرئيسية للواجهة --- Run the main UI event loop ---
     app.mainloop()
-    logging.info("Application finished.")
-    logging.info("-----------------------------------")
