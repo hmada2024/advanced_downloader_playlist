@@ -163,8 +163,7 @@ class Downloader:
             self._last_hook_playlist_index = hook_playlist_index
 
         if status == "finished":
-            filepath: Optional[str] = info_dict.get("filepath") or d.get("filename")
-            if filepath:
+            if filepath := info_dict.get("filepath") or d.get("filename"):
                 self._update_status_on_finish_or_process(
                     filepath, info_dict, is_final=False
                 )
