@@ -4,74 +4,63 @@
 
 import sys
 import re
+import os  # Required for path operations
 from pathlib import Path
-from typing import Optional, Union  # Added Union for type hinting
+from typing import Optional, Union
 
-# Import yt_dlp specific utils carefully to avoid circular dependencies if refactored
+# Import yt_dlp specific utils carefully
 try:
     import yt_dlp.utils as yt_dlp_utils
 except ImportError:
-    # Fallback or logging if yt_dlp is not installed, though it's a requirement
     print("Warning: yt-dlp not found, ffmpeg detection might be limited.")
     yt_dlp_utils = None
+
+# --- Constants ---
+TEMP_FOLDER_NAME = "ASF_TEMP"  # اسم المجلد المؤقت
 
 
 def find_ffmpeg() -> Optional[str]:
     """
     يبحث عن الملف التنفيذي لـ FFmpeg.
-    Looks for the FFmpeg executable.
-    الأولوية للملف المضمن في مجلد ffmpeg_bin، ثم لمتغيرات البيئة PATH.
-    Priority is given to the bundled executable in ffmpeg_bin, then the system PATH.
-
+    Priority is given to the bundled executable, then the system PATH.
     Returns:
-        Optional[str]: مسار FFmpeg إذا وجد، وإلا None. Path to ffmpeg if found, else None.
+        Optional[str]: Path to ffmpeg.exe if found, else None.
     """
     base_path: Path
     try:
-        # Determine base path correctly for both running script and bundled app
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-            # Running as a PyInstaller bundle
             base_path = Path(sys._MEIPASS)
         elif getattr(sys, "frozen", False):
-            # Running as a bundled executable (not using _MEIPASS?)
             base_path = Path(sys.executable).parent
         else:
-            # Running as a script
-            # <<<--- Adjustment Needed Here based on where find_ffmpeg is called from --- >>>
-            # If utils.py is in src/logic, and ffmpeg_bin is at the project root (sibling to src),
-            # the path needs to go up two levels from utils.py (logic -> src -> project root)
+            # Running as script: Assuming utils.py is in src/logic, go up 3 levels
             base_path = Path(__file__).resolve().parent.parent.parent
-            # print(f"Script mode: Calculated base path: {base_path}") # Debug print
+            # print(f"Script mode base path: {base_path}") # Debug
     except Exception as e:
         print(f"Error determining base path: {e}")
-        base_path = Path(".")  # Fallback to current directory
+        base_path = Path(".")
 
-    # 1. Check for bundled version relative to base path
-    bundled_ffmpeg_path: Path = base_path / "ffmpeg_bin" / "ffmpeg.exe"
-    bundled_ffprobe_path: Path = (
-        base_path / "ffmpeg_bin" / "ffprobe.exe"
-    )  # Also check ffprobe
-
-    # print(f"Checking bundled path: {bundled_ffmpeg_path}") # Debug print
-
+    # 1. Check bundled version
+    bundled_ffmpeg_path = base_path / "ffmpeg_bin" / "ffmpeg.exe"
+    # print(f"Checking bundled ffmpeg: {bundled_ffmpeg_path}") # Debug
     if bundled_ffmpeg_path.is_file():
+        # Also check for ffprobe companion
+        bundled_ffprobe_path = bundled_ffmpeg_path.with_name("ffprobe.exe")
         if bundled_ffprobe_path.is_file():
             print(f"Found bundled ffmpeg and ffprobe in: {bundled_ffmpeg_path.parent}")
         else:
             print(
-                f"Found bundled ffmpeg: {bundled_ffmpeg_path}, but ffprobe might be missing."
+                f"Warning: Found bundled ffmpeg but not ffprobe at {bundled_ffprobe_path}"
             )
-        return str(bundled_ffmpeg_path)  # Return path to ffmpeg.exe
-    # 2. If not bundled, check the system PATH using yt_dlp's utility if available
+        return str(bundled_ffmpeg_path)
+    # 2. Check system PATH via yt_dlp utils
     print(
-        f"Bundled ffmpeg not found or incomplete at '{bundled_ffmpeg_path.parent}'. Checking system PATH..."
+        f"Bundled ffmpeg not found at '{bundled_ffmpeg_path}'. Checking system PATH..."
     )
     if yt_dlp_utils:
         try:
-            # Use yt-dlp's function to find ffmpeg in PATH
-            ffmpeg_path_in_env: Optional[str] = yt_dlp_utils.ffmpeg_executable()
+            ffmpeg_path_in_env = yt_dlp_utils.ffmpeg_executable()
             if ffmpeg_path_in_env and Path(ffmpeg_path_in_env).is_file():
-                # Check if ffprobe is also accessible near the found ffmpeg
                 ffprobe_env_path = Path(ffmpeg_path_in_env).parent / "ffprobe.exe"
                 if ffprobe_env_path.is_file():
                     print(
@@ -85,41 +74,65 @@ def find_ffmpeg() -> Optional[str]:
         except Exception as e:
             print(f"Error checking for ffmpeg in PATH via yt-dlp: {e}")
 
-    # 3. If neither bundled nor found in PATH
+    # 3. Not found
     print("Warning: ffmpeg/ffprobe not found in bundle or system PATH.")
     return None
 
 
-# Use Union[str, None] or Optional[str] for filename parameter
+# <<< إضافة: دالة للحصول على وإنشاء المجلد المؤقت >>>
+def get_temp_dir() -> Optional[Path]:
+    """
+    يحصل على مسار المجلد المؤقت المخصص للتطبيق وينشئه إذا لم يكن موجودًا.
+    يقع المجلد المؤقت داخل مجلد المستخدم الرئيسي.
+
+    Returns:
+        Optional[Path]: كائن Path للمجلد المؤقت، أو None إذا فشل الإنشاء.
+    """
+    try:
+        # الحصول على مجلد المستخدم الرئيسي
+        user_home = Path.home()
+        if not user_home.is_dir():
+            print(f"Error: Cannot find user home directory: {user_home}")
+            return None
+
+        # تحديد مسار المجلد المؤقت
+        temp_dir_path = user_home / TEMP_FOLDER_NAME
+
+        # إنشاء المجلد إذا لم يكن موجودًا (مع المجلدات الأصلية إذا لزم الأمر)
+        temp_dir_path.mkdir(parents=True, exist_ok=True)
+
+        print(f"Using temporary directory: {temp_dir_path}")
+        return temp_dir_path
+
+    except OSError as e:
+        print(f"Error creating temporary directory '{temp_dir_path}': {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error getting temporary directory: {e}")
+        return None
+
+
 def clean_filename(filename: Optional[str]) -> str:
     """
     ينظف اسم الملف بإزالة الأحرف غير الصالحة واستبدال أخرى.
     Cleans a filename by removing invalid characters and replacing others.
 
     Args:
-        filename (Optional[str]): اسم الملف الأصلي. The original filename.
+        filename (Optional[str]): The original filename.
 
     Returns:
-        str: اسم الملف المنظف. The cleaned filename.
-             Returns "downloaded_file" if the cleaned name is empty or input is None.
+        str: The cleaned filename. Returns "downloaded_file" if empty or None input.
     """
-    # --- Constants for filename cleaning ---
     INVALID_FILENAME_CHARS_REGEX = r'[\\/*?:"<>|]'
-    REPLACEMENT_CHAR = ""  # Replace invalid chars with nothing
+    REPLACEMENT_CHAR = ""
     FALLBACK_FILENAME = "downloaded_file"
-    # --------------------------------------
 
     if not filename:
         return FALLBACK_FILENAME
 
-    # Remove invalid characters using regex
-    cleaned: str = re.sub(INVALID_FILENAME_CHARS_REGEX, REPLACEMENT_CHAR, filename)
-    # Replace colons separately (often used in timestamps)
-    cleaned = cleaned.replace(":", " -")
-    # Replace multiple spaces with a single space and strip leading/trailing whitespace
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    # Remove trailing dots and spaces which can cause issues on Windows
-    cleaned = cleaned.rstrip(". ")
+    cleaned = re.sub(INVALID_FILENAME_CHARS_REGEX, REPLACEMENT_CHAR, filename)
+    cleaned = cleaned.replace(":", " -")  # Replace colons separately
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()  # Replace multiple spaces and strip
+    cleaned = cleaned.rstrip(". ")  # Remove trailing dots/spaces
 
-    # Return the cleaned name, or fallback if it became empty
     return cleaned or FALLBACK_FILENAME
