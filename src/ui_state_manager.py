@@ -2,13 +2,14 @@
 # -- Mixin class for managing UI states --
 
 import customtkinter as ctk
-import os # Needed for isdir check within _enter_info_fetched_state
+import os  # Needed for isdir check within _enter_info_fetched_state
 
 # Note: This class assumes it's mixed into a class that has attributes like:
 # self.top_frame_widget, self.options_frame_widget, self.path_frame_widget,
 # self.bottom_controls_widget, self.playlist_selector_widget, self.dynamic_area_label,
 # self.status_label, self.progress_bar, self.fetched_info, self.current_operation,
 # self._last_toggled_playlist_mode, and methods like update_status
+
 
 class UIStateManagerMixin:
     """Mixin class containing methods for managing the UI state transitions."""
@@ -25,19 +26,23 @@ class UIStateManagerMixin:
     def _enter_idle_state(self):
         """Enters the idle state (ready for a new operation)."""
         print("UI_Interface: Entering idle state.")
-        self._enable_main_controls(enable_playlist_switch=True) # Enable everything
-        self.bottom_controls_widget.disable_download(button_text="Download") # Disable download
-        self.bottom_controls_widget.hide_cancel_button() # Hide cancel
-        self.dynamic_area_label.configure(text="") # Clear dynamic label
+        self._enable_main_controls(enable_playlist_switch=True)  # Enable everything
+        self.bottom_controls_widget.disable_download(
+            button_text="Download"
+        )  # Disable download
+        self.bottom_controls_widget.hide_cancel_button()  # Hide cancel
+        self.dynamic_area_label.configure(text="")  # Clear dynamic label
 
         # Ensure playlist selector is hidden and reset
         self.playlist_selector_widget.grid_remove()
         self.playlist_selector_widget.reset()
 
-        self.fetched_info = None # Clear fetched info
-        self.status_label.configure(text="Enter URL and click Fetch Info.", text_color="gray") # Default status
-        self.progress_bar.set(0) # Reset progress bar
-        self.current_operation = None # No active operation
+        self.fetched_info = None  # Clear fetched info
+        self.status_label.configure(
+            text="Enter URL and click Fetch Info.", text_color="gray"
+        )  # Default status
+        self.progress_bar.set(0)  # Reset progress bar
+        self.current_operation = None  # No active operation
         # Reset playlist switch to default ON state
         self.options_frame_widget.set_playlist_mode(True)
         self._last_toggled_playlist_mode = True
@@ -45,36 +50,44 @@ class UIStateManagerMixin:
     def _enter_fetching_state(self):
         """Enters the state while fetching information."""
         print("UI_Interface: Entering fetching state.")
-        self.top_frame_widget.disable_fetch(button_text="Fetching...") # Disable fetch
-        self.options_frame_widget.disable() # Disable options
-        self.path_frame_widget.disable() # Disable path
-        self.bottom_controls_widget.disable_download() # Disable download
-        self.bottom_controls_widget.show_cancel_button() # Show cancel
-        self.status_label.configure(text="Fetching information...", text_color="orange") # Update status
-        self.progress_bar.set(0) # Start progress at 0
+        self.top_frame_widget.disable_fetch(button_text="Fetching...")  # Disable fetch
+        self.options_frame_widget.disable()  # Disable options
+        self.path_frame_widget.disable()  # Disable path
+        self.bottom_controls_widget.disable_download()  # Disable download
+        self.bottom_controls_widget.show_cancel_button()  # Show cancel
+        self.status_label.configure(
+            text="Fetching information...", text_color="orange"
+        )  # Update status
+        self.progress_bar.set(0)  # Start progress at 0
 
     def _enter_downloading_state(self):
         """Enters the state during download/processing."""
         print("UI_Interface: Entering downloading state.")
-        self.top_frame_widget.disable_fetch() # Disable all input/controls
+        self.top_frame_widget.disable_fetch()  # Disable all input/controls
         self.options_frame_widget.disable()
         self.path_frame_widget.disable()
-        self.playlist_selector_widget.disable() # Disable playlist selector
+        self.playlist_selector_widget.disable()  # Disable playlist selector
 
-        self.bottom_controls_widget.disable_download(button_text="Downloading...") # Change download button text/state
-        self.bottom_controls_widget.show_cancel_button() # Show cancel button
+        self.bottom_controls_widget.disable_download(
+            button_text="Downloading..."
+        )  # Change download button text/state
+        self.bottom_controls_widget.show_cancel_button()  # Show cancel button
 
     def _display_playlist_view(self):
         """Sets up and displays the playlist selection view."""
         playlist_title = self.fetched_info.get("title", "Untitled Playlist")
         total_items = len(self.fetched_info.get("entries", []))
-        self.dynamic_area_label.configure(text=f"Playlist: {playlist_title} ({total_items} items total)")
+        self.dynamic_area_label.configure(
+            text=f"Playlist: {playlist_title} ({total_items} items total)"
+        )
 
         # Show, populate, and enable the playlist selector
         self.playlist_selector_widget.populate_items(self.fetched_info.get("entries"))
         self.playlist_selector_widget.enable()
         # Grid it into the dynamic area
-        self.playlist_selector_widget.grid(row=4, column=0, padx=20, pady=(5, 10), sticky="nsew") # Dynamic row
+        self.playlist_selector_widget.grid(
+            row=4, column=0, padx=20, pady=(5, 10), sticky="nsew"
+        )  # Dynamic row
         print("UI_Interface: Playlist frame gridded.")
 
     def _enter_info_fetched_state(self):
@@ -102,18 +115,22 @@ class UIStateManagerMixin:
             f"Show Playlist View: {should_show_playlist_view}"
         )
 
-        self.bottom_controls_widget.hide_cancel_button() # Hide cancel
+        self.bottom_controls_widget.hide_cancel_button()  # Hide cancel
 
         # Enable download button only if a valid path is selected
         save_path = self.path_frame_widget.get_path()
         if save_path and os.path.isdir(save_path):
-             self.bottom_controls_widget.enable_download(button_text="Download Selection")
+            self.bottom_controls_widget.enable_download(
+                button_text="Download Selection"
+            )
         else:
-             self.bottom_controls_widget.disable_download(button_text="Select Save Location")
+            self.bottom_controls_widget.disable_download(
+                button_text="Select Save Location"
+            )
 
         # Show/hide the dynamic area content (playlist selector or video title)
         if should_show_playlist_view:
-            self._display_playlist_view() # Use the renamed helper method
+            self._display_playlist_view()  # Use the renamed helper method
         else:
             # If not in playlist mode or not an actual playlist
             video_title = self.fetched_info.get("title", "Untitled Video")

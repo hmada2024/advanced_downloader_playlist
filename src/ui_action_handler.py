@@ -3,7 +3,7 @@
 
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
-import os # Needed for isdir check
+import os  # Needed for isdir check
 
 # Note: This class assumes it's mixed into a class that has attributes like:
 # self.logic, self.top_frame_widget, self.options_frame_widget,
@@ -11,6 +11,7 @@ import os # Needed for isdir check
 # self.fetched_info, self.current_operation, self._last_toggled_playlist_mode
 # and methods from UIStateManagerMixin like _enter_fetching_state, _enter_downloading_state, _enter_info_fetched_state
 # and methods from UICallbackHandlerMixin like update_status
+
 
 class UIActionHandlerMixin:
     """Mixin class containing methods for handling user actions and initiating logic operations."""
@@ -22,8 +23,14 @@ class UIActionHandlerMixin:
             self.path_frame_widget.set_path(directory)
             # If path is selected AND info was already fetched, enable download button
             # Check the button state to avoid unnecessary configuring
-            if self.fetched_info and self.bottom_controls_widget.download_button.cget("state") == "disabled":
-                self.bottom_controls_widget.enable_download(button_text="Download Selection")
+            if (
+                self.fetched_info
+                and self.bottom_controls_widget.download_button.cget("state")
+                == "disabled"
+            ):
+                self.bottom_controls_widget.enable_download(
+                    button_text="Download Selection"
+                )
 
     def fetch_video_info(self):
         """Initiates the process to fetch info for the entered URL."""
@@ -36,12 +43,12 @@ class UIActionHandlerMixin:
         self.fetched_info = None
         self.playlist_selector_widget.grid_remove()
         self.dynamic_area_label.configure(text="")
-        self.top_frame_widget.set_url(url) # Ensure URL stays in the entry
+        self.top_frame_widget.set_url(url)  # Ensure URL stays in the entry
 
-        self.current_operation = "fetch" # Mark current operation
+        self.current_operation = "fetch"  # Mark current operation
         # Store the playlist switch state BEFORE starting fetch
         self._last_toggled_playlist_mode = self.options_frame_widget.get_playlist_mode()
-        self._enter_fetching_state() # Transition UI to fetching state
+        self._enter_fetching_state()  # Transition UI to fetching state
 
         # Call logic handler to start the actual fetch in a background thread
         if self.logic:
@@ -60,7 +67,9 @@ class UIActionHandlerMixin:
         """Initiates the download process based on current selections."""
         url = self.top_frame_widget.get_url()
         save_path = self.path_frame_widget.get_path()
-        format_choice = self.options_frame_widget.get_format_choice() # Always use the general choice
+        format_choice = (
+            self.options_frame_widget.get_format_choice()
+        )  # Always use the general choice
         is_playlist_mode_on = self.options_frame_widget.get_playlist_mode()
 
         # Basic input validation
@@ -88,38 +97,49 @@ class UIActionHandlerMixin:
         # Determine download behavior (playlist or single)
         if is_playlist_mode_on and is_actually_playlist:
             # Playlist download
-            playlist_items_string = self.playlist_selector_widget.get_selected_items_string()
+            playlist_items_string = (
+                self.playlist_selector_widget.get_selected_items_string()
+            )
             if not playlist_items_string:
-                messagebox.showwarning("Selection Error", "No playlist items selected for download.")
+                messagebox.showwarning(
+                    "Selection Error", "No playlist items selected for download."
+                )
                 return
             # Calculate selected count from the resulting string
             selected_items_count = len(playlist_items_string.split(","))
-            print(f"UI: Starting playlist download. Selected: {selected_items_count}, Total: {total_playlist_count}, Items: {playlist_items_string}, Format: {format_choice}")
+            print(
+                f"UI: Starting playlist download. Selected: {selected_items_count}, Total: {total_playlist_count}, Items: {playlist_items_string}, Format: {format_choice}"
+            )
 
         elif not is_playlist_mode_on and self.fetched_info:
             # Single video download (or first item if playlist mode is off)
             if is_actually_playlist and not messagebox.askyesno(
-                                "Confirm Single Download",
-                                "This is a playlist, but playlist mode is off.\nDo you want to download only the first video/item based on the URL?",
-                            ):
+                "Confirm Single Download",
+                "This is a playlist, but playlist mode is off.\nDo you want to download only the first video/item based on the URL?",
+            ):
                 return
             # Quality is determined solely by format_choice from the top dropdown
-            selected_items_count = 1 # Only one item
-            print(f"UI: Starting single video/item download. General Format: {format_choice}, Playlist Total (if any): {total_playlist_count}")
+            selected_items_count = 1  # Only one item
+            print(
+                f"UI: Starting single video/item download. General Format: {format_choice}, Playlist Total (if any): {total_playlist_count}"
+            )
         else:
             # Should not happen if UI state logic is correct
-            messagebox.showerror("Logic Error", "Mismatch between UI state and fetched info during download.")
+            messagebox.showerror(
+                "Logic Error",
+                "Mismatch between UI state and fetched info during download.",
+            )
             return
 
-        self.current_operation = "download" # Mark current operation
-        self._enter_downloading_state() # Transition UI to downloading state
+        self.current_operation = "download"  # Mark current operation
+        self._enter_downloading_state()  # Transition UI to downloading state
 
         # Call logic handler to start the actual download
         if self.logic:
             self.logic.start_download(
                 url=url,
                 save_path=save_path,
-                format_choice=format_choice, # Pass the general format choice
+                format_choice=format_choice,  # Pass the general format choice
                 # quality_format_id parameter is completely removed
                 is_playlist=is_playlist_mode_on and is_actually_playlist,
                 playlist_items=playlist_items_string,
@@ -134,9 +154,9 @@ class UIActionHandlerMixin:
             # update_status is in UICallbackHandlerMixin, accessible via self
             self.update_status("Cancellation requested...")
         if self.logic:
-            self.logic.cancel_operation() # Signal cancellation to logic handler
+            self.logic.cancel_operation()  # Signal cancellation to logic handler
         else:
             # Fallback if logic handler isn't available (shouldn't happen)
             print("UI_Interface: No logic handler available to cancel.")
             # _enter_idle_state is in UIStateManagerMixin, accessible via self
-            self._enter_idle_state() # Go back to a safe state
+            self._enter_idle_state()  # Go back to a safe state

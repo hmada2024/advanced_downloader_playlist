@@ -3,8 +3,10 @@
 
 import customtkinter as ctk
 
+
 class TopInputFrame(ctk.CTkFrame):
     """إطار يحتوي على حقل إدخال الرابط وزر جلب المعلومات."""
+
     """Frame containing the URL input field and the Fetch Info button."""
 
     def __init__(self, master, fetch_command, **kwargs):
@@ -20,16 +22,22 @@ class TopInputFrame(ctk.CTkFrame):
         self.fetch_command = fetch_command
 
         # إعداد الشبكة الداخلية للإطار Configure internal grid
-        self.grid_columnconfigure(1, weight=1) # السماح لحقل الإدخال بالتمدد Allow entry field to expand
+        self.grid_columnconfigure(
+            1, weight=1
+        )  # السماح لحقل الإدخال بالتمدد Allow entry field to expand
 
         # إنشاء وعرض العناصر Create and grid the widgets
         self.url_label = ctk.CTkLabel(self, text="Video/Playlist URL:")
         self.url_label.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="w")
 
-        self.url_entry = ctk.CTkEntry(self, placeholder_text="Enter URL and click Fetch Info", width=350)
+        self.url_entry = ctk.CTkEntry(
+            self, placeholder_text="Enter URL and click Fetch Info", width=350
+        )
         self.url_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
-        self.fetch_button = ctk.CTkButton(self, text="Fetch Info", width=100, command=self.fetch_command)
+        self.fetch_button = ctk.CTkButton(
+            self, text="Fetch Info", width=100, command=self.fetch_command
+        )
         self.fetch_button.grid(row=0, column=2, padx=(5, 0), pady=5, sticky="e")
 
     def get_url(self):
@@ -40,7 +48,7 @@ class TopInputFrame(ctk.CTkFrame):
     def set_url(self, url_text):
         """تحدد النص في حقل إدخال الرابط."""
         """Sets the text in the URL entry field."""
-        self.url_entry.delete(0, 'end')
+        self.url_entry.delete(0, "end")
         self.url_entry.insert(0, url_text)
 
     def enable_fetch(self):

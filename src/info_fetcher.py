@@ -4,13 +4,17 @@
 
 import yt_dlp
 import traceback
-from .exceptions import DownloadCancelled # <-- استيراد نسبي للاستثناء المخصص Relative import for custom exception
+from .exceptions import (
+    DownloadCancelled,
+)  # <-- استيراد نسبي للاستثناء المخصص Relative import for custom exception
+
 
 class InfoFetcher:
     """
     كلاس مسؤول عن عملية جلب معلومات الفيديو/قائمة التشغيل باستخدام yt-dlp.
     Class responsible for fetching video/playlist information using yt-dlp.
     """
+
     def __init__(
         self,
         url,
@@ -56,19 +60,19 @@ class InfoFetcher:
         Executes the core information fetching process using yt-dlp.
         """
         self.status_callback("Fetching information...")
-        self.progress_callback(0) # يمكن استخدام 0 كبداية Progress starts at 0
+        self.progress_callback(0)  # يمكن استخدام 0 كبداية Progress starts at 0
         self._check_cancel("before starting fetch")
 
         # خيارات yt-dlp لجلب المعلومات فقط
         # yt-dlp options for fetching info only
         ydl_opts = {
-            "quiet": True,              # منع طباعة مخرجات yt-dlp القياسية Suppress standard yt-dlp output
-            "nocheckcertificate": True, # تجاهل أخطاء شهادة SSL Ignore SSL certificate errors
-            "extract_flat": "in_playlist", # جلب معلومات القائمة بسرعة دون تحليل كل فيديو Fetch playlist info quickly without parsing each video
-            "playlistend": 500,         # حد أقصى لعدد العناصر في القائمة (للحماية من القوائم الضخمة) Limit playlist items (protection)
-            "ignoreerrors": True,       # محاولة المتابعة حتى لو فشل جلب بعض عناصر القائمة Try to continue even if some items fail
-            "forcejson": True,          # إجبار الإخراج كـ JSON (لضمان الحصول على قاموس) Force JSON output (ensures dictionary)
-            "skip_download": True,      # الأهم: عدم تحميل أي شيء Absolutely crucial: do not download anything
+            "quiet": True,  # منع طباعة مخرجات yt-dlp القياسية Suppress standard yt-dlp output
+            "nocheckcertificate": True,  # تجاهل أخطاء شهادة SSL Ignore SSL certificate errors
+            "extract_flat": "in_playlist",  # جلب معلومات القائمة بسرعة دون تحليل كل فيديو Fetch playlist info quickly without parsing each video
+            "playlistend": 500,  # حد أقصى لعدد العناصر في القائمة (للحماية من القوائم الضخمة) Limit playlist items (protection)
+            "ignoreerrors": True,  # محاولة المتابعة حتى لو فشل جلب بعض عناصر القائمة Try to continue even if some items fail
+            "forcejson": True,  # إجبار الإخراج كـ JSON (لضمان الحصول على قاموس) Force JSON output (ensures dictionary)
+            "skip_download": True,  # الأهم: عدم تحميل أي شيء Absolutely crucial: do not download anything
         }
 
         info_dict = None
@@ -100,16 +104,17 @@ class InfoFetcher:
                 # إذا لا يوجد بيانات جزئية، أبلغ عن الخطأ If no partial data, report the error
                 print(f"InfoFetcher yt-dlp DownloadError: {e}")
                 self.error_callback(error_message)
-            return # الخروج من الدالة بعد معالجة الخطأ Exit function after handling error
+            return  # الخروج من الدالة بعد معالجة الخطأ Exit function after handling error
 
         except DownloadCancelled:
             # إذا تم الإلغاء، أعد إطلاق الاستثناء ليتم التقاطه في run() If cancelled, re-raise for run() to catch
             raise
         except Exception as e:
-            # التعامل مع أي أخطاء أخرى غير متوقعة Handle any other unexpected errors
-            print(f"InfoFetcher Unexpected Error: {e}")
-            traceback.print_exc() # طباعة تتبع الخطأ الكامل Print full traceback
-            self.error_callback(f"An unexpected error occurred: {type(e).__name__}")
+            self._extracted_from_run_58(
+                'InfoFetcher Unexpected Error: ',
+                e,
+                'An unexpected error occurred: ',
+            )
             return
 
         # بعد محاولة الجلب After the fetch attempt
@@ -124,11 +129,13 @@ class InfoFetcher:
                         "Playlist is empty, private, or could not be accessed."
                     )
                     return
-                info_dict["entries"] = valid_entries # تحديث القائمة بالإدخالات الصالحة Update list with valid entries
+                info_dict["entries"] = (
+                    valid_entries  # تحديث القائمة بالإدخالات الصالحة Update list with valid entries
+                )
 
             # استدعاء كول باك النجاح Call success callback
             self.status_callback("Information fetched successfully.")
-            self.progress_callback(1.0) # اكتمل التقدم Progress complete
+            self.progress_callback(1.0)  # اكتمل التقدم Progress complete
             self.success_callback(info_dict)
         else:
             # إذا لم يتم إرجاع أي قاموس (رابط غير صالح مثلاً) If no dictionary returned (e.g., invalid URL)
@@ -153,13 +160,18 @@ class InfoFetcher:
             self.status_callback(str(e))
             print(e)
         except Exception as e:
-            # التعامل مع أي خطأ فادح غير متوقع قد يحدث خارج _fetch_info_core Handle any fatal unexpected error outside _fetch_info_core
-            print(f"InfoFetcher FATAL UNEXPECTED Error in run: {e}")
-            traceback.print_exc()
-            self.error_callback(
-                f"A critical unexpected error occurred: {type(e).__name__}"
+            self._extracted_from_run_58(
+                'InfoFetcher FATAL UNEXPECTED Error in run: ',
+                e,
+                'A critical unexpected error occurred: ',
             )
         finally:
             # التأكد من استدعاء الكول باك النهائي دائمًا Ensure the final callback is always called
             print("InfoFetcher: Reached finally block, calling finished_callback.")
             self.finished_callback()
+
+    # TODO Rename this here and in `_fetch_info_core` and `run`
+    def _extracted_from_run_58(self, arg0, e, arg2):
+        print(f"{arg0}{e}")
+        traceback.print_exc()
+        self.error_callback(f"{arg2}{type(e).__name__}")
