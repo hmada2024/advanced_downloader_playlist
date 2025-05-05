@@ -135,7 +135,7 @@ class HistoryTab(ctk.CTkFrame):
 
             # Timestamp and Operation Type
             details_text = (
-                f"{entry_data['timestamp']}  |  Type: {entry_data['operation_type']}"
+                f"{entry_data['timestamp']}  |  Use The Link in : {entry_data['operation_type']}"
             )
             # <<< ملاحظة: لون النص الرمادي سيعمل جيدًا للتمييز >>>
             details_label = ctk.CTkLabel(
