@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional, Dict, Any, Callable
 # Conditional import for type hinting
 if TYPE_CHECKING:
     import customtkinter as ctk  # Keep this standard import
-    from .ui_interface import UserInterface  # From same directory (ui)
+    from .interface import UserInterface  # From same directory (ui)
     from ..logic.logic_handler import LogicHandler  # From parent's logic directory
 
 # --- Constants ---

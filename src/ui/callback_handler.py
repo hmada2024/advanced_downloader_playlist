@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Dict, Any, Optional
 # --- Type Hinting for Tkinter/CTk elements (Conditional Import) ---
 if TYPE_CHECKING:
     import customtkinter as ctk  # Standard import
-    from .ui_interface import UserInterface  # From same directory (ui)
+    from .interface import UserInterface  # From same directory (ui)
 
     # Add component hints if needed for accessing specific widget methods directly
     from .components.path_selection_frame import PathSelectionFrame

@@ -1,25 +1,26 @@
-# main.py
+# src/main.py
 # -- ملف نقطة الدخول الرئيسي لتشغيل التطبيق --
 # Purpose: Main entry point script to run the application.
 
 import sys
 import os
 from pathlib import Path
-from typing import Optional  # Added typing
+from typing import Optional
 
 # --- Import Core Application Classes ---
-# Ensure correct import paths if project structure changes
+# Ensure correct import paths now that main.py is inside src
 try:
-    # <<<--- التعديل هنا --->>>
-    from src.ui.interface import UserInterface
-    from src.logic.logic_handler import LogicHandler
+    # <<<--- التعديل هنا: إزالة 'src.' واستخدام استيراد مباشر للوحدات الشقيقة --->>>
+    from ui.interface import UserInterface  # كان اسمه interface.py, تم تصحيحه هنا
+    from logic.logic_handler import LogicHandler
 except ImportError as e:
     # Handle import errors, maybe provide guidance if run from wrong directory
     print(f"Import Error: {e}")
+    # تعديل رسالة الخطأ لتناسب الحالة الجديدة
     print(
-        "Please ensure you are running this script from the project's root directory"
-        " (the one containing the 'src' folder)"
-        " or that the 'src' package is correctly installed/accessible."
+        "Import Error. Ensure you are running this script correctly"
+        " (e.g., using 'python -m src.main' from the project root)"
+        " and all necessary __init__.py files exist in 'src' and its subdirectories ('ui', 'logic', 'components')."
     )
     sys.exit(1)  # Exit if core components can't be imported
 
@@ -58,19 +59,8 @@ if __name__ == "__main__":
     # set_high_dpi_awareness() # Uncomment this line if needed
 
     # --- Determine Application Path (for bundled resources like ffmpeg) ---
-    # Handled within logic_utils.find_ffmpeg now, no need here unless accessing other bundled files.
-    # application_path: str = ""
-    # if getattr(sys, "frozen", False):
-    #     # Running as a bundled app (PyInstaller)
-    #     application_path = os.path.dirname(sys.executable)
-    # else:
-    #     # Running as a script
-    #     try:
-    #         application_path = os.path.dirname(os.path.abspath(__file__))
-    #     except NameError:
-    #          # Fallback if __file__ is not defined (e.g., interactive interpreter)
-    #         application_path = os.getcwd()
-    # print(f"Application Base Path: {application_path}")
+    # This is handled within logic/utils.py now, no specific need here unless
+    # accessing other bundled files directly from main.py, which is unlikely.
 
     # --- Instantiate Application Components ---
     # 1. Create the main UI window instance first. Logic handler is initially None.
