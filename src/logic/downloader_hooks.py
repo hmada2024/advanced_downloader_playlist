@@ -14,7 +14,7 @@ from yt_dlp.utils import DownloadCancelled as YtdlpDownloadCancelled
 
 # Imports from current package
 from .exceptions import DownloadCancelled
-from .logic_utils import clean_filename  # Needed for postprocessor renaming
+from .utils import clean_filename  # Needed for postprocessor renaming
 from .downloader_constants import *  # Import all constants
 from .downloader_utils import check_cancel  # Import check_cancel utility
 

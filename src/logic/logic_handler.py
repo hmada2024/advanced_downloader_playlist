@@ -8,7 +8,7 @@ from typing import Callable, Dict, Any, Optional  # Added typing imports
 # Imports from current package
 from .info_fetcher import InfoFetcher
 from .downloader import Downloader
-from .logic_utils import find_ffmpeg
+from .utils import find_ffmpeg
 from .exceptions import DownloadCancelled
 
 # --- Constants ---

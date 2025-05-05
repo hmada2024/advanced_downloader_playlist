@@ -11,7 +11,7 @@ from typing import Optional  # Added typing
 # Ensure correct import paths if project structure changes
 try:
     # <<<--- التعديل هنا --->>>
-    from src.ui.ui_interface import UserInterface
+    from src.ui.interface import UserInterface
     from src.logic.logic_handler import LogicHandler
 except ImportError as e:
     # Handle import errors, maybe provide guidance if run from wrong directory

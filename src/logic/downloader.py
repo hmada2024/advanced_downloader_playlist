@@ -20,7 +20,7 @@ from yt_dlp.utils import (
 
 # Imports from current package
 from .exceptions import DownloadCancelled
-from .logic_utils import (
+from .utils import (
     clean_filename,
 )  # Keep clean_filename accessible if needed by _update_status
 from .downloader_constants import *  # استيراد جميع الثوابت
