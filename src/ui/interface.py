@@ -1,14 +1,16 @@
 # src/ui/ui_interface.py
 # -- Main application UI window class and coordinator between components --
-# -- Modified to include TabView for Home and History --
+# -- Modified to integrate GetLinksTab into the TabView --
 
 import customtkinter as ctk
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, TYPE_CHECKING  # Added TYPE_CHECKING
 
 # --- استيراد كلاسات المنطق والـ Handler ---
 # استخدام Optional لأن logic_handler قد يتم حقنه بعد الإنشاء
 # استخدم '..' للخروج من مجلد 'ui' والوصول إلى 'logic'
-from ..logic.logic_handler import LogicHandler, Optional
+# Conditional import for type hinting LogicHandler
+if TYPE_CHECKING:
+    from ..logic.logic_handler import LogicHandler
 
 # --- استيراد كلاسات Mixin (التي توفر وظائف لـ UserInterface) ---
 # استخدم '.' للاستيراد من نفس المجلد 'ui'
@@ -24,13 +26,17 @@ from .components.path_selection_frame import PathSelectionFrame
 from .components.bottom_controls_frame import BottomControlsFrame
 from .components.playlist_selector import PlaylistSelector
 
+# --- <<< تعديل: استيراد كلاس التبويب الجديد >>> ---
+from .get_links_tab import GetLinksTab
+
 # --- الثوابت ---
 APP_TITLE = "Advanced Downloader"  # عنوان التطبيق
 INITIAL_GEOMETRY = "850x750"  # حجم النافذة الأولي
 DEFAULT_STATUS = "Initializing..."  # تم تغيير رسالة الحالة الافتراضية
 DEFAULT_STATUS_COLOR = "gray"  # لون الحالة الافتراضي
-TAB_HOME = "Home"  # اسم تبويب الصفحة الرئيسية
-TAB_HISTORY = "History"  # اسم تبويب السجل
+TAB_HOME = "Download a Playlist or Video yourself"  # <<< تعديل: تغيير اسم التبويب الأول ليكون أوضح >>>
+# <<< تعديل: تعريف اسم التبويب الجديد >>>
+TAB_GET_LINKS = "Get Temporary Playlist Links For Downloading"
 
 
 # الكلاس الرئيسي للواجهة يرث الآن من CTk ومن Mixins الوظيفية
@@ -45,7 +51,9 @@ class UserInterface(
     - Handling user actions like button clicks (UIActionHandlerMixin)
     """
 
-    def __init__(self, logic_handler: Optional[LogicHandler] = None) -> None:
+    def __init__(
+        self, logic_handler: Optional["LogicHandler"] = None
+    ) -> None:  # Use string literal for LogicHandler
         """
         Initializes the main window, creates UI components, links logic, and sets initial state.
         Args:
@@ -56,12 +64,14 @@ class UserInterface(
 
         # --- متغيرات النسخة (Instance Attributes) ---
         # معالج المنطق (يمكن تعيينه بعد التهيئة)
-        self.logic: Optional[LogicHandler] = logic_handler
-        # البيانات التي تم جلبها من الرابط
+        self.logic: Optional["LogicHandler"] = (
+            logic_handler  # Use string literal for LogicHandler
+        )
+        # البيانات التي تم جلبها من الرابط (لتبويب التحميل الرئيسي)
         self.fetched_info: Optional[Dict[str, Any]] = None
-        # يتتبع العملية الحالية في الخلفية ('fetch' أو 'download')
+        # يتتبع العملية الحالية في الخلفية ('fetch' أو 'download' - لتبويب التحميل الرئيسي)
         self.current_operation: Optional[str] = None
-        # يخزن آخر تفضيل صريح للمستخدم لمفتاح وضع قائمة التشغيل
+        # يخزن آخر تفضيل صريح للمستخدم لمفتاح وضع قائمة التشغيل (لتبويب التحميل الرئيسي)
         self._last_toggled_playlist_mode: bool = (
             True  # الافتراضي هو تفعيل وضع قائمة التشغيل
         )
@@ -86,61 +96,56 @@ class UserInterface(
         self.tab_view.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # --- إضافة التبويبات ---
-        self.tab_view.add(TAB_HOME)  # إضافة التبويب الأول
-        self.tab_view.add(TAB_HISTORY)  # إضافة التبويب الثاني
-        self.tab_view.set(TAB_HOME)  # تعيين "Home" كالتبويب المرئي في البداية
+        self.tab_view.add(TAB_HOME)  # إضافة التبويب الأول (التحميل)
+        # <<< تعديل: إضافة التبويب الجديد باسمه المحدد >>>
+        self.tab_view.add(TAB_GET_LINKS)
+        self.tab_view.set(TAB_HOME)  # تعيين تبويب التحميل كالتبويب المرئي في البداية
 
         # --- الحصول على إطارات التبويبات ---
-        self.home_tab_frame = self.tab_view.tab(TAB_HOME)  # إطار تبويب Home
-        self.history_tab_frame = self.tab_view.tab(TAB_HISTORY)  # إطار تبويب History
+        self.home_tab_frame = self.tab_view.tab(TAB_HOME)  # إطار تبويب التحميل
+        # <<< تعديل: الحصول على إطار التبويب الجديد >>>
+        self.get_links_tab_frame = self.tab_view.tab(TAB_GET_LINKS)
 
-        # --- تكوين تخطيط الشبكة داخل تبويب Home ---
+        # --- تكوين تخطيط الشبكة داخل تبويب Home (التحميل) ---
         self.home_tab_frame.grid_columnconfigure(0, weight=1)  # العمود 0 يتمدد أفقيًا
         # افتراض أن PlaylistSelector في الصف 4 ويجب أن يتمدد رأسيًا
         self.home_tab_frame.grid_rowconfigure(4, weight=1)
 
-        # --- إنشاء نسخ مكونات الواجهة لتبويب Home ---
-        # هام: تغيير 'master' إلى 'self.home_tab_frame' للمكونات داخل تبويب Home
+        # --- إنشاء نسخ مكونات الواجهة لتبويب Home (التحميل) ---
+        # هام: 'master' هو 'self.home_tab_frame'
         self.top_frame_widget = TopInputFrame(
-            self.home_tab_frame,  # الـ master الآن هو تبويب Home
-            fetch_command=self.fetch_video_info,
+            self.home_tab_frame,
+            fetch_command=self.fetch_video_info,  # Method from UIActionHandlerMixin
         )
         self.options_frame_widget = OptionsControlFrame(
-            self.home_tab_frame,  # الـ master الآن هو تبويب Home
-            toggle_playlist_command=self.toggle_playlist_mode,
+            self.home_tab_frame,
+            toggle_playlist_command=self.toggle_playlist_mode,  # Method from UIActionHandlerMixin
         )
         self.path_frame_widget = PathSelectionFrame(
-            self.home_tab_frame,  # الـ master الآن هو تبويب Home
-            browse_callback=self.browse_path_logic,
+            self.home_tab_frame,
+            browse_callback=self.browse_path_logic,  # Method from UIActionHandlerMixin
         )
-        # ليبل للمحتوى الديناميكي (عنوان الفيديو أو قائمة التشغيل) داخل تبويب Home
         self.dynamic_area_label = ctk.CTkLabel(
-            self.home_tab_frame,  # الـ master الآن هو تبويب Home
+            self.home_tab_frame,
             text="",
             font=ctk.CTkFont(weight="bold"),
-            wraplength=650,  # Added wraplength to prevent very long titles from expanding window
+            wraplength=650,
         )
-        # محدد قائمة التشغيل (إطار قابل للتمرير لعناصر قائمة التشغيل) داخل تبويب Home
-        self.playlist_selector_widget = PlaylistSelector(
-            self.home_tab_frame  # الـ master الآن هو تبويب Home
-        )
-        # عناصر التحكم السفلية (أزرار التحميل/الإلغاء) داخل تبويب Home
+        self.playlist_selector_widget = PlaylistSelector(self.home_tab_frame)
         self.bottom_controls_widget = BottomControlsFrame(
-            self.home_tab_frame,  # الـ master الآن هو تبويب Home
-            download_command=self.start_download_ui,
-            cancel_command=self.cancel_operation_ui,
+            self.home_tab_frame,
+            download_command=self.start_download_ui,  # Method from UIActionHandlerMixin
+            cancel_command=self.cancel_operation_ui,  # Method from UIActionHandlerMixin
         )
 
-        # --- وضع مكونات الواجهة في شبكة إطار تبويب Home ---
-        # مواقع الشبكة نسبة إلى home_tab_frame
+        # --- وضع مكونات الواجهة في شبكة إطار تبويب Home (التحميل) ---
         self.top_frame_widget.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
         self.options_frame_widget.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
         self.path_frame_widget.grid(row=2, column=0, padx=15, pady=5, sticky="ew")
         self.dynamic_area_label.grid(row=3, column=0, padx=20, pady=(10, 0), sticky="w")
-        # محدد قائمة التشغيل (row 4) يتم وضعه في الشبكة ديناميكيًا بواسطة _display_playlist_view (داخل home_tab_frame)
-        # self.playlist_selector_widget.grid(...) # يتم بواسطة مدير الحالة
+        # محدد قائمة التشغيل يوضع ديناميكيًا بواسطة _display_playlist_view
         self.bottom_controls_widget.grid(
-            row=6,  # Adjusted row to leave space for playlist
+            row=6,  # ترك صفوف 4 و 5 لمحدد القائمة
             column=0,
             padx=15,
             pady=(5, 5),
@@ -155,31 +160,38 @@ class UserInterface(
         # ليبل الحالة في الأسفل (الـ master هو self - النافذة الرئيسية)
         self.status_label = ctk.CTkLabel(
             self,
-            text=DEFAULT_STATUS,  # النص الافتراضي
-            text_color=DEFAULT_STATUS_COLOR,  # اللون الافتراضي
-            font=ctk.CTkFont(size=13),  # حجم الخط
-            justify="left",  # محاذاة لليسار للحالة متعددة الأسطر
-            anchor="w",  # تثبيت النص إلى الغرب (يسار)
+            text=DEFAULT_STATUS,
+            text_color=DEFAULT_STATUS_COLOR,
+            font=ctk.CTkFont(size=13),
+            justify="left",
+            anchor="w",
         )
 
         # --- وضع الويدجتس أسفل عرض التبويبات في الشبكة ---
-        # استخدام الصف 1 و 2 من شبكة النافذة الرئيسية
         self.progress_bar.grid(row=1, column=0, padx=20, pady=(0, 5), sticky="ew")
         self.status_label.grid(row=2, column=0, padx=25, pady=(0, 10), sticky="ew")
 
-        # --- محتوى تبويب السجل (History) (عنصر نائب) ---
-        # ترك إطار history_tab_frame فارغًا الآن
-        history_placeholder = ctk.CTkLabel(
-            self.history_tab_frame, text="History will be shown here."
-        )
-        history_placeholder.pack(padx=20, pady=20)
+        # --- <<< تعديل: إنشاء ووضع محتوى تبويب جلب الروابط >>> ---
+        # تهيئة تخطيط الشبكة داخل إطار التبويب الجديد
+        self.get_links_tab_frame.grid_rowconfigure(0, weight=1)
+        self.get_links_tab_frame.grid_columnconfigure(0, weight=1)
 
-        # --- الدخول في حالة الواجهة الأولية ---
+        # إنشاء نسخة من GetLinksTab ووضعها داخل إطارها
+        self.get_links_content = GetLinksTab(master=self.get_links_tab_frame)
+        self.get_links_content.grid(
+            row=0, column=0, sticky="nsew", padx=5, pady=5
+        )  # Use grid for consistency
+
+        # --- <<< تعديل: إزالة المحتوى المؤقت للتبويب السابق >>> ---
+        # حذف الأسطر المتعلقة بـ history_tab_frame و history_placeholder إذا كانت موجودة
+
+        # --- الدخول في حالة الواجهة الأولية (لتبويب التحميل الرئيسي) ---
+        # Methods from UIStateManagerMixin
         self._enter_idle_state()
 
     def set_default_save_path(self, path: str) -> None:
         """
-        Sets the initial text in the save path entry widget.
+        Sets the initial text in the save path entry widget (for the main Downloader tab).
         Called by main.py after finding the default path.
 
         Args:
@@ -188,7 +200,7 @@ class UserInterface(
         if self.path_frame_widget:
             try:
                 self.path_frame_widget.set_path(path)
-                print(f"UI: Default save path set to '{path}'")
+                print(f"UI: Default save path set to '{path}' for Downloader tab.")
             except Exception as e:
                 print(f"UI Error: Could not set default path in widget: {e}")
         else:
@@ -196,6 +208,9 @@ class UserInterface(
 
 
 # --- دوال Mixin ---
-# The inherited methods from mixins should generally continue to work
-# as they access widgets via `self.widget_name`. The placement of widgets
-# (gridding) is handled either here in __init__ or in the state manager mixin.
+# The inherited methods from mixins (State, Callback, Action) primarily target
+# the widgets belonging to the main 'Downloader' tab (self.top_frame_widget, etc.).
+# The 'Get Links' tab manages its own state and logic internally via GetLinksTab class.
+# Callbacks like update_status and update_progress (from UICallbackHandlerMixin)
+# affect the *global* status label and progress bar at the bottom of the main window,
+# which is acceptable, although GetLinksTab also has its own internal status label.
