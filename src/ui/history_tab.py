@@ -107,7 +107,7 @@ class HistoryTab(ctk.CTkFrame):
             # Title or URL (truncated)
             display_text = entry_data.get('title') or entry_data['url']
             if len(display_text) > MAX_TITLE_DISPLAY_LEN:
-                display_text = display_text[:MAX_TITLE_DISPLAY_LEN-3] + "..."
+                display_text = f"{display_text[:MAX_TITLE_DISPLAY_LEN - 3]}..."
 
             title_label = ctk.CTkLabel(info_frame, text=display_text, anchor="w", font=ctk.CTkFont(weight="bold"))
             title_label.pack(fill="x", pady=(0,2))
@@ -157,7 +157,7 @@ class HistoryTab(ctk.CTkFrame):
         op_type: str = entry_data['operation_type']
         print(f"HistoryTab: Use Again clicked - URL: {url}, Type: {op_type}")
 
-        if op_type in ['Download', 'Fetch Info']:
+        if op_type in {'Download', 'Fetch Info'}:
             self.ui_interface.switch_to_downloader_tab(url)
         elif op_type == 'Get Links':
             self.ui_interface.switch_to_getlinks_tab(url)

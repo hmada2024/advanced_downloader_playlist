@@ -1,45 +1,54 @@
 # src/ui/interface.py
 # -- Main application UI window class and coordinator between components --
-# -- Modified to integrate HistoryTab and fix NameError --
+# -- Modified to accommodate new Paste/Fetch button locations --
 
 import contextlib
 from tkinter import messagebox
 import customtkinter as ctk
 from typing import Optional, Dict, Any, Callable, TYPE_CHECKING
 
-# --- استيراد كلاسات المنطق والـ Handler ---
+# --- Imports ---
 if TYPE_CHECKING:
     from ..logic.logic_handler import LogicHandler
     from ..logic.history_manager import HistoryManager
 
-# --- استيراد كلاسات Mixin ---
+# Mixins (ensure correct constants are available/imported)
 from .state_manager import (
     UIStateManagerMixin,
-)  # Imports constants like BTN_TXT_DOWNLOAD etc.
+    LABEL_EMPTY,
+    BTN_TXT_DOWNLOAD_VIDEO,
+    BTN_TXT_DOWNLOAD_SELECTION,
+)  # Import needed constants
 from .callback_handler import (
+    UICallbackHandlerMixin,
     COLOR_CANCEL,
     COLOR_ERROR,
-    UICallbackHandlerMixin,
-)  # Imports constants like COLOR_ERROR etc.
+    COLOR_SUCCESS,
+    COLOR_INFO,
+)  # Import needed constants
 from .action_handler import (
+    UIActionHandlerMixin,
+    TITLE_INPUT_ERROR,
     MSG_URL_EMPTY,
     OP_FETCH,
-    TITLE_INPUT_ERROR,
-    UIActionHandlerMixin,
-)  # Imports constants like TITLE_INPUT_ERROR etc.
+    OP_DOWNLOAD,
+    MSG_LOGIC_HANDLER_MISSING,
+)  # Import needed constants
 
-# --- استيراد كلاسات مكونات الواجهة ---
+# Components
 from .components.top_input_frame import TopInputFrame
 from .components.options_control_frame import OptionsControlFrame
 from .components.path_selection_frame import PathSelectionFrame
-from .components.bottom_controls_frame import BottomControlsFrame
+from .components.bottom_controls_frame import (
+    BottomControlsFrame,
+)  # <<< تم تعديل هذا المكون
 from .components.playlist_selector import PlaylistSelector
 
-# --- استيراد كلاسات التبويبات ---
+# Tabs
 from .get_links_tab import GetLinksTab
 from .history_tab import HistoryTab
 
-# --- الثوابت ---
+# --- Constants ---
 APP_TITLE = "Advanced Spider Fetch"
 INITIAL_GEOMETRY = "900x750"
 DEFAULT_STATUS = "Initializing..."
@@ -47,20 +56,16 @@ DEFAULT_STATUS_COLOR = "gray"
 TAB_HOME = "Download a Playlist or Video yourself"
 TAB_GET_LINKS = "Get Temporary Playlist Links For Downloading"
 TAB_HISTORY = "History"
-LABEL_EMPTY = ""
+# LABEL_EMPTY is imported from state_manager
 
 
-# الكلاس الرئيسي للواجهة يرث الآن من CTk ومن Mixins الوظيفية
 class UserInterface(
     ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActionHandlerMixin
 ):
     """
     Main application window with TabView interface.
-    Initializes UI components and inherits functionality from Mixin classes for:
-    - State management (UIStateManagerMixin)
-    - Callback handling from logic layer (UICallbackHandlerMixin)
-    - Handling user actions like button clicks (UIActionHandlerMixin)
     Integrates Download, Get Links, and History tabs.
+    Handles UI layout and state changes.
     """
 
     def __init__(
@@ -68,60 +73,42 @@ class UserInterface(
         logic_handler: Optional["LogicHandler"] = None,
         history_manager: Optional["HistoryManager"] = None,
     ) -> None:
-        """
-        Initializes the main window, creates UI components, links logic, sets up history, and sets initial state.
-        Args:
-            logic_handler (Optional[LogicHandler]): Instance of the LogicHandler.
-            history_manager (Optional[HistoryManager]): Instance of the HistoryManager.
-        """
         super().__init__()
 
-        # --- متغيرات النسخة ---
         self.logic: Optional["LogicHandler"] = logic_handler
         self.history_manager: Optional["HistoryManager"] = history_manager
         self.fetched_info: Optional[Dict[str, Any]] = None
         self.current_operation: Optional[str] = None
         self._last_toggled_playlist_mode: bool = True
-        self._current_fetch_url: Optional[str] = None
+        self._current_fetch_url: Optional[str] = None  # Used for history logging
 
-        # --- إعداد النافذة الأساسي ---
         self.title(APP_TITLE)
         self.geometry(INITIAL_GEOMETRY)
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
 
-        # --- تكوين الشبكة الرئيسية ---
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0)
-        self.grid_rowconfigure(2, weight=0)
+        self.grid_rowconfigure(0, weight=1)  # Tab view expands
+        self.grid_rowconfigure(1, weight=0)  # Progress bar fixed height
+        self.grid_rowconfigure(2, weight=0)  # Status label fixed height
 
-        # --- إنشاء عرض التبويبات ---
         self.tab_view = ctk.CTkTabview(self)
         self.tab_view.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.tab_view.configure(command=self._on_tab_change)
 
-        # --- إضافة التبويبات ---
         self.tab_view.add(TAB_HOME)
         self.tab_view.add(TAB_GET_LINKS)
         self.tab_view.add(TAB_HISTORY)
         self.tab_view.set(TAB_HOME)
 
-        # --- الحصول على إطارات التبويبات ---
         self.home_tab_frame = self.tab_view.tab(TAB_HOME)
         self.get_links_tab_frame = self.tab_view.tab(TAB_GET_LINKS)
         self.history_tab_frame = self.tab_view.tab(TAB_HISTORY)
 
-        # --- تهيئة تبويب Home (Downloader) ---
         self._setup_home_tab()
-
-        # --- تهيئة تبويب Get Links ---
         self._setup_get_links_tab()
-
-        # --- تهيئة تبويب History ---
         self._setup_history_tab()
 
-        # --- إنشاء ووضع الويدجتس السفلية (التقدم والحالة) ---
         self.progress_bar = ctk.CTkProgressBar(self)
         self.progress_bar.set(0)
         self.status_label = ctk.CTkLabel(
@@ -135,7 +122,7 @@ class UserInterface(
         self.progress_bar.grid(row=1, column=0, padx=20, pady=(0, 5), sticky="ew")
         self.status_label.grid(row=2, column=0, padx=25, pady=(0, 10), sticky="ew")
 
-        # --- الدخول في حالة الواجهة الأولية (لتبويب Home) ---
+        # Set initial state for Home tab
         self._enter_idle_state()
 
     def _setup_home_tab(self) -> None:
@@ -145,8 +132,10 @@ class UserInterface(
             4, weight=1
         )  # Playlist selector row expands
 
+        # <<< تعديل: تمرير دالة اللصق إلى TopInputFrame >>>
         self.top_frame_widget = TopInputFrame(
-            self.home_tab_frame, fetch_command=self.fetch_video_info
+            self.home_tab_frame,
+            paste_command=self.paste_url_action,  # Use the new action method
         )
         self.options_frame_widget = OptionsControlFrame(
             self.home_tab_frame, toggle_playlist_command=self.toggle_playlist_mode
@@ -161,20 +150,33 @@ class UserInterface(
             wraplength=750,
         )
         self.playlist_selector_widget = PlaylistSelector(self.home_tab_frame)
+
+        # <<< تعديل: تمرير دالة الجلب إلى BottomControlsFrame >>>
         self.bottom_controls_widget = BottomControlsFrame(
             self.home_tab_frame,
+            fetch_command=self.fetch_video_info,  # Pass fetch_video_info here
             download_command=self.start_download_ui,
             cancel_command=self.cancel_operation_ui,
         )
+        # <<< --- >>>
 
+        # --- Grid Layout ---
         self.top_frame_widget.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
         self.options_frame_widget.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
         self.path_frame_widget.grid(row=2, column=0, padx=15, pady=5, sticky="ew")
         self.dynamic_area_label.grid(row=3, column=0, padx=20, pady=(10, 0), sticky="w")
-        # Playlist selector is gridded dynamically
+        # Playlist selector gridded dynamically by state manager (_display_playlist_view)
+        # >>> Grid the BottomControlsFrame <<<
         self.bottom_controls_widget.grid(
-            row=6, column=0, padx=15, pady=(5, 5), sticky="ew"
+            row=5,
+            column=0,
+            padx=15,
+            pady=(10, 15),
+            sticky="ew",  # <<< تعديل الصف والـ pady
         )
+
+    # --- بقية دوال الواجهة (_setup_get_links_tab, _setup_history_tab, _on_tab_change, etc.) تبقى كما هي ---
+    # ... (الكود من الملف الأصلي) ...
 
     def _setup_get_links_tab(self) -> None:
         """Creates and grids widgets for the Get Links tab."""
@@ -213,8 +215,7 @@ class UserInterface(
         if selected_tab == TAB_HISTORY and hasattr(self, "history_content"):
             self.history_content.refresh_history()
 
-    # --- Callback Methods (Including History Logging) ---
-
+    # --- Callback Methods (Inherited/Overridden for History Logging) ---
     def on_info_success(self, info_dict: Dict[str, Any]) -> None:
         """Callback executed when info fetch succeeds (thread-safe). Also logs history."""
         logged = False
@@ -223,9 +224,8 @@ class UserInterface(
             logged = self.history_manager.add_entry(
                 url=self._current_fetch_url, title=title, operation_type="Fetch Info"
             )
-            # Optionally clear URL only if successfully logged to avoid double logging on retry
-            # if logged:
-            #     self._current_fetch_url = None
+            # Clear URL *after* successful fetch and potential logging attempt
+            self._current_fetch_url = None  # Clear here
 
         def _update() -> None:
             self.fetched_info = info_dict
@@ -246,7 +246,7 @@ class UserInterface(
             except Exception as e:
                 print(f"Error configuring playlist switch: {e}")
 
-            self._enter_info_fetched_state()
+            self._enter_info_fetched_state()  # Update UI state
 
             status_msg: str = "Info fetched. Ready to download."
             is_playlist_mode_on = False
@@ -261,8 +261,6 @@ class UserInterface(
                     else f"Playlist info fetched ({item_count} items). Toggle switch ON to select items."
                 )
             self.update_status(status_msg)
-            # Clear the fetch URL here after successful UI update to prevent double logging
-            self._current_fetch_url = None
 
         self.after(0, _update)
 
@@ -288,7 +286,6 @@ class UserInterface(
                 f"UI_Interface: Task finished (Type: '{operation_type}'). Final status: '{final_status_text}' (Color: {final_status_color})"
             )
 
-            # Determine state based on status label text/color
             # Use constants imported from callback_handler
             was_cancelled: bool = (
                 COLOR_CANCEL in final_status_color
@@ -299,12 +296,16 @@ class UserInterface(
                 or "error" in final_status_text.lower()
             )
 
-            # Check for success (specifically for download logging)
             if operation_type == "download" and not was_cancelled and not was_error:
-                # More reliable: Check if status message indicates completion/success
-                if any(
+                # Use success color or specific success messages
+                if COLOR_SUCCESS in final_status_color or any(
                     term in final_status_text.lower()
-                    for term in ["finished", "complete", "download successful"]
+                    for term in [
+                        "finished",
+                        "complete",
+                        "download successful",
+                        "completed:",
+                    ]
                 ):
                     was_success = True
                     try:
@@ -313,22 +314,18 @@ class UserInterface(
                             download_title_for_log = self.fetched_info.get(
                                 "title", "Untitled Download"
                             )
-                            # Refine title for playlists
                             if isinstance(self.fetched_info.get("entries"), list):
-                                # Maybe get selected items count from LogicHandler if passed back?
-                                # For now, just indicate it was a playlist
                                 download_title_for_log += " (Playlist)"
                     except Exception as e:
                         print(
                             f"UI Warning: Could not retrieve URL/Title for history logging after download: {e}"
                         )
                 else:
-                    # If download finished but status doesn't clearly indicate success, don't log yet.
                     print(
                         f"UI Info: Download task finished but final status '{final_status_text}' doesn't confirm success. Skipping history log."
                     )
 
-            # UI State transitions based on outcome
+            # UI State transitions
             if was_cancelled:
                 print("UI: Operation was cancelled.")
                 if self.fetched_info and operation_type == "download":
@@ -340,10 +337,10 @@ class UserInterface(
             elif was_error:
                 print("UI: Operation failed with error.")
                 if self.fetched_info and operation_type == "download":
-                    self._enter_info_fetched_state()
+                    self._enter_info_fetched_state()  # Go back to fetched state if download failed
                 else:
-                    self._enter_idle_state()
-                # Keep the error message set by on_info_error or status_callback
+                    self._enter_idle_state()  # Go back to idle if fetch failed
+                # Keep the error message previously set by error callbacks
             elif operation_type == "fetch":
                 print(
                     "UI: Info fetch finished (handled by on_info_success/on_info_error)."
@@ -358,81 +355,42 @@ class UserInterface(
                             save_path = self.path_frame_widget.get_path()
                     except Exception as e:
                         print(f"Error getting save path: {e}")
-
                     messagebox.showinfo(
                         "Download Complete",
                         f"Download finished successfully!\nFile(s) saved in:\n{save_path or 'Selected folder'}",
                     )
-
-                    # Log history AFTER showing success message and before resetting state
                     if self.history_manager and download_url_for_log:
                         self.history_manager.add_entry(
                             url=download_url_for_log,
                             title=download_title_for_log,
                             operation_type="Download",
                         )
-                    self._enter_idle_state()
+                    self._enter_idle_state()  # Go back to idle after successful download
                 else:
-                    # Handle case where download finishes but status wasn't clearly success
                     print(
                         "UI Warning: Download finished but not marked as success. Resetting."
                     )
-                    self._enter_idle_state()
-                    # Keep whatever status message was last shown (might indicate partial success/failure)
-
+                    self._enter_idle_state()  # Reset to idle even if download partially failed/stopped
             else:
                 print(
                     f"UI Warning: Task finished with unknown state/type. Resetting. (Op: {operation_type}, Status: {final_status_text})"
                 )
                 self._enter_idle_state()
 
-            self.current_operation = None
+            self.current_operation = None  # Clear current operation after handling
 
         self.after(50, _process_finish)
 
-    # --- Action Methods (Including modifications for History) ---
-
-    def fetch_video_info(self) -> None:
-        """Initiates the process to fetch info for the entered URL. Stores URL for history."""
-        url: str = self.top_frame_widget.get_url()
-        if not url:
-            # Use constants imported from action_handler
-            messagebox.showerror(TITLE_INPUT_ERROR, MSG_URL_EMPTY)
-            return
-
-        # Store URL for logging in on_info_success
-        self._current_fetch_url = url
-
-        # Reset previous fetch results
-        self.fetched_info = None
-        if hasattr(self, "playlist_selector_widget"):  # Check if widget exists
-            self.playlist_selector_widget.grid_remove()
-        # Use the defined LABEL_EMPTY constant
-        if hasattr(self, "dynamic_area_label"):  # Check if widget exists
-            self.dynamic_area_label.configure(text=LABEL_EMPTY)
-
-        # Set state for fetching
-        self.current_operation = OP_FETCH  # Use constant from action_handler
-        if hasattr(self, "options_frame_widget"):
-            self._last_toggled_playlist_mode = (
-                self.options_frame_widget.get_playlist_mode()
-            )
-        self._enter_fetching_state()  # Method from state_manager
-
-        if self.logic:
-            self.logic.start_info_fetch(url)
-        else:
-            self._handle_missing_logic_handler()  # Method from action_handler
-
-    # --- Helper methods for tab switching (used by HistoryTab) ---
-
+    # --- Helper methods for tab switching (Inherited from Action Handler/Added) ---
     def switch_to_downloader_tab(self, url: str) -> None:
         """Switches to the Downloader tab and populates the URL."""
         print(f"UI: Switching to Downloader tab with URL: {url}")
         self.tab_view.set(TAB_HOME)
         if hasattr(self, "top_frame_widget"):
             self.top_frame_widget.set_url(url)
-            self.update_status("URL loaded from history. Click 'Fetch Info'.")
+            self.update_status(
+                "URL loaded from history. Click 'Fetch Info' below."
+            )  # Update prompt
         else:
             print("UI Error: Downloader tab widgets not ready for URL population.")
 
@@ -445,7 +403,6 @@ class UserInterface(
         ):
             self.get_links_content.url_entry.delete(0, "end")
             self.get_links_content.url_entry.insert(0, url)
-            # Access the internal status update method of GetLinksTab
             self.get_links_content._update_status(
                 "URL loaded from history. Click 'Get Links'."
             )
@@ -463,7 +420,6 @@ class UserInterface(
         else:
             print("UI Error: Path frame widget not available to set default path.")
 
-    # --- Other Inherited Mixin Methods ---
-    # These methods (like start_download_ui, browse_path_logic, _enter_idle_state, update_status etc.)
-    # are inherited from the Mixin classes and should work as intended, using constants defined
-    # within those Mixin files or now globally in this file.
+    # Other Mixin methods (like update_status, update_progress, on_info_error, browse_path_logic etc.) are inherited.
+    # The fetch_video_info, start_download_ui, paste_url_action methods are in UIActionHandlerMixin.
+    # The state transition methods (_enter_idle_state etc.) are in UIStateManagerMixin.
