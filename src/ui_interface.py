@@ -1,5 +1,6 @@
 # src/ui_interface.py
 # -- Main application UI window class and coordinator between components --
+# -- Modified to include TabView for Home and History --
 
 import customtkinter as ctk
 from typing import Optional, Dict, Any, Callable  # Added typing
@@ -25,6 +26,8 @@ APP_TITLE = "Advanced Downloader"
 INITIAL_GEOMETRY = "850x750"  # Initial window size
 DEFAULT_STATUS = "Initializing..."
 DEFAULT_STATUS_COLOR = "gray"
+TAB_HOME = "Home"
+TAB_HISTORY = "History"
 
 
 # The main UI class now inherits from CTk window and the functional Mixins
@@ -32,7 +35,7 @@ class UserInterface(
     ctk.CTk, UIStateManagerMixin, UICallbackHandlerMixin, UIActionHandlerMixin
 ):
     """
-    Main application window.
+    Main application window with TabView interface.
     Initializes UI components and inherits functionality from Mixin classes for:
     - State management (UIStateManagerMixin)
     - Callback handling from logic layer (UICallbackHandlerMixin)
@@ -67,39 +70,86 @@ class UserInterface(
         ctk.set_appearance_mode("System")  # Follow system theme (Light/Dark)
         ctk.set_default_color_theme("blue")  # Set theme color
 
-        # --- Main Grid Configuration ---
-        # Make the main column expandable
-        self.grid_columnconfigure(0, weight=1)
-        # Make the row containing the playlist selector expandable (row 4)
-        self.grid_rowconfigure(4, weight=1)
-        # Add weights to other rows if needed for specific resize behavior
+        # --- Main Window Grid Configuration ---
+        # Configure grid for TabView (row 0) and status/progress (rows 1, 2)
+        self.grid_columnconfigure(0, weight=1)  # Main column expands
+        self.grid_rowconfigure(0, weight=1)  # TabView row expands
+        self.grid_rowconfigure(1, weight=0)  # Progress bar row fixed height
+        self.grid_rowconfigure(2, weight=0)  # Status label row fixed height
 
-        # --- Create UI Component Instances ---
-        # Pass 'self' as master and necessary callbacks from ActionHandlerMixin
-        self.top_frame_widget = TopInputFrame(self, fetch_command=self.fetch_video_info)
+        # --- Create Tab View ---
+        self.tab_view = ctk.CTkTabview(self)
+        self.tab_view.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        # --- Add Tabs ---
+        self.tab_view.add(TAB_HOME)
+        self.tab_view.add(TAB_HISTORY)
+        self.tab_view.set(TAB_HOME)  # Set "Home" as the initially visible tab
+
+        # --- Get Tab Frames ---
+        self.home_tab_frame = self.tab_view.tab(TAB_HOME)
+        self.history_tab_frame = self.tab_view.tab(TAB_HISTORY)
+
+        # --- Configure Grid Layout inside Home Tab ---
+        self.home_tab_frame.grid_columnconfigure(
+            0, weight=1
+        )  # Column 0 expands horizontally
+        # Assuming PlaylistSelector is in row 4 and should expand vertically
+        self.home_tab_frame.grid_rowconfigure(4, weight=1)
+
+        # --- Create UI Component Instances for Home Tab ---
+        # IMPORTANT: Change 'master' to 'self.home_tab_frame' for components inside the Home tab
+        self.top_frame_widget = TopInputFrame(
+            self.home_tab_frame,  # Master is now Home tab
+            fetch_command=self.fetch_video_info,
+        )
         self.options_frame_widget = OptionsControlFrame(
-            self, toggle_playlist_command=self.toggle_playlist_mode
+            self.home_tab_frame,  # Master is now Home tab
+            toggle_playlist_command=self.toggle_playlist_mode,
         )
         self.path_frame_widget = PathSelectionFrame(
-            self, browse_callback=self.browse_path_logic
+            self.home_tab_frame,  # Master is now Home tab
+            browse_callback=self.browse_path_logic,
         )
+        # Label for dynamic content (Video title or Playlist title) inside Home tab
+        self.dynamic_area_label = ctk.CTkLabel(
+            self.home_tab_frame,  # Master is now Home tab
+            text="",
+            font=ctk.CTkFont(weight="bold"),
+        )
+        # Playlist selector (Scrollable frame for playlist items) inside Home tab
         self.playlist_selector_widget = PlaylistSelector(
-            self
-        )  # Scrollable frame for playlist items
+            self.home_tab_frame  # Master is now Home tab
+        )
+        # Bottom controls (Download/Cancel buttons) inside Home tab
         self.bottom_controls_widget = BottomControlsFrame(
-            self,
+            self.home_tab_frame,  # Master is now Home tab
             download_command=self.start_download_ui,
             cancel_command=self.cancel_operation_ui,
         )
-        # Label for dynamic content (Video title or Playlist title)
-        self.dynamic_area_label = ctk.CTkLabel(
-            self, text="", font=ctk.CTkFont(weight="bold")  # Start empty
+
+        # --- Grid the UI Components into the Home Tab Frame ---
+        # Grid positions are relative to home_tab_frame
+        self.top_frame_widget.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
+        self.options_frame_widget.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
+        self.path_frame_widget.grid(row=2, column=0, padx=15, pady=5, sticky="ew")
+        self.dynamic_area_label.grid(row=3, column=0, padx=20, pady=(10, 0), sticky="w")
+        # Playlist selector (row 4) is gridded dynamically by _display_playlist_view (inside home_tab_frame)
+        # self.playlist_selector_widget.grid(...) # Done in state manager
+        self.bottom_controls_widget.grid(
+            row=6,
+            column=0,
+            padx=15,
+            pady=(5, 5),
+            sticky="ew",  # Below potential playlist
         )
-        # Progress Bar
+
+        # --- Create Widgets Below the TabView (in the main window) ---
+        # Progress Bar (master is self - the main window)
         self.progress_bar = ctk.CTkProgressBar(self)
         self.progress_bar.set(0)  # Initialize progress to 0
 
-        # Status Label at the bottom
+        # Status Label at the bottom (master is self - the main window)
         self.status_label = ctk.CTkLabel(
             self,
             text=DEFAULT_STATUS,
@@ -109,22 +159,20 @@ class UserInterface(
             anchor="w",  # Anchor text to the west (left)
         )
 
-        # --- Grid the UI Components into the Main Window ---
-        # Order matters for layout and row numbers
-        self.top_frame_widget.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="ew")
-        self.options_frame_widget.grid(row=1, column=0, padx=15, pady=5, sticky="ew")
-        self.path_frame_widget.grid(row=2, column=0, padx=15, pady=5, sticky="ew")
-        self.dynamic_area_label.grid(row=3, column=0, padx=20, pady=(10, 0), sticky="w")
-        # Playlist selector (row 4) is gridded dynamically by _display_playlist_view
-        # self.playlist_selector_widget.grid(...) # Done in state manager
-        self.bottom_controls_widget.grid(
-            row=6, column=0, padx=15, pady=(5, 5), sticky="ew"
-        )  # Below potential playlist
-        self.progress_bar.grid(row=7, column=0, padx=20, pady=(0, 5), sticky="ew")
-        self.status_label.grid(row=8, column=0, padx=25, pady=(0, 10), sticky="ew")
+        # --- Grid Widgets Below TabView ---
+        # Use row 1 and 2 of the main window's grid
+        self.progress_bar.grid(row=1, column=0, padx=20, pady=(0, 5), sticky="ew")
+        self.status_label.grid(row=2, column=0, padx=25, pady=(0, 10), sticky="ew")
+
+        # --- History Tab Content (Placeholder) ---
+        # Leave the history_tab_frame empty for now
+        # You could add a simple label as a placeholder if you like:
+        # history_placeholder = ctk.CTkLabel(self.history_tab_frame, text="History will be shown here.")
+        # history_placeholder.pack(padx=20, pady=20)
 
         # --- Enter Initial UI State ---
         # Call the state management method to set up the initial idle appearance
+        # This should still work as it references the widgets stored in 'self'
         self._enter_idle_state()
 
     def set_default_save_path(self, path: str) -> None:
@@ -135,6 +183,7 @@ class UserInterface(
         Args:
             path (str): The default save path string.
         """
+        # This method should still work correctly as self.path_frame_widget exists
         if self.path_frame_widget:  # Ensure widget exists
             try:
                 self.path_frame_widget.set_path(path)
@@ -147,3 +196,14 @@ class UserInterface(
         else:
             # This shouldn't happen if called after __init__
             print("UI Error: Path frame widget not available to set default path.")
+
+
+# --- Mixin Methods ---
+# The methods inherited from UIStateManagerMixin, UICallbackHandlerMixin,
+# and UIActionHandlerMixin should generally continue to work because they
+# access the widgets through `self.widget_name` (e.g., self.top_frame_widget,
+# self.bottom_controls_widget), and we still store these references in `self`
+# even though the widgets' master has changed to `self.home_tab_frame`.
+# Make sure any grid operations inside the mixins correctly handle the context
+# (e.g., `self.playlist_selector_widget.grid(...)` will grid inside its master,
+# which is now `home_tab_frame`).
