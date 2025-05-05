@@ -53,12 +53,20 @@ class TopInputFrame(ctk.CTkFrame):
 
     def enable_fetch(self):
         """تمكين حقل الإدخال وزر الجلب."""
-        """Enables the entry field and fetch button."""
-        self.url_entry.configure(state="normal")
-        self.fetch_button.configure(state="normal", text="Fetch Info")
+        self._extracted_from_disable_fetch_3(
+            """Enables the entry field and fetch button.""", "normal", "Fetch Info"
+        )
 
     def disable_fetch(self, button_text="Fetching..."):
         """تعطيل حقل الإدخال وزر الجلب وتغيير نص الزر."""
-        """Disables the entry field and fetch button, changing the button text."""
-        self.url_entry.configure(state="disabled")
-        self.fetch_button.configure(state="disabled", text=button_text)
+        self._extracted_from_disable_fetch_3(
+            """Disables the entry field and fetch button, changing the button text.""",
+            "disabled",
+            button_text,
+        )
+
+    # TODO Rename this here and in `enable_fetch` and `disable_fetch`
+    def _extracted_from_disable_fetch_3(self, arg0, state, text):
+        arg0
+        self.url_entry.configure(state=state)
+        self.fetch_button.configure(state=state, text=text)
