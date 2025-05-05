@@ -30,7 +30,7 @@ from .components.playlist_selector import PlaylistSelector
 from .get_links_tab import GetLinksTab
 
 # --- الثوابت ---
-APP_TITLE = "Advanced Downloader"  # عنوان التطبيق
+APP_TITLE = "Advanced Spider Fetch"  # عنوان التطبيق
 INITIAL_GEOMETRY = "850x750"  # حجم النافذة الأولي
 DEFAULT_STATUS = "Initializing..."  # تم تغيير رسالة الحالة الافتراضية
 DEFAULT_STATUS_COLOR = "gray"  # لون الحالة الافتراضي

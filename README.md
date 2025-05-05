@@ -41,7 +41,7 @@ ADVANCED_DOWNLOADER/          <-- المجلد الجذر للمشروع
 ├── README.md                 <-- (مقترح) ملف لوضع ملخص المشروع والمعلومات الأخرى
 └── advanced_downloaderV4.spec <-- (مثال) ملف مواصفات PyInstaller للتجميع
 
-ملخص مهام ملفات مشروع Advanced Downloader
+ملخص مهام ملفات مشروع Advanced Spider Fetch
 =========================================
 
 **ملفات الجذر:**
