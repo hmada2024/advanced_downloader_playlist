@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Dict, Any, Optional  # Added typing 
 # This avoids runtime errors if the mixin is imported without the main UI class.
 if TYPE_CHECKING:
     import customtkinter as ctk
-    from .ui_interface import UserInterface  # Assuming UserInterface is the main class
+    from .ui.ui_interface import UserInterface  # Assuming UserInterface is the main class
 
 # --- Constants for Status Colors ---
 COLOR_ERROR = "red"

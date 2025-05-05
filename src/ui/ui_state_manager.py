@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional, List, Dict, Any, Callable  # Added t
 # Conditional import for type hinting UI elements
 if TYPE_CHECKING:
     import customtkinter as ctk
-    from .ui_interface import UserInterface
+    from .ui.ui_interface import UserInterface
     from .ui_components.top_input_frame import TopInputFrame
     from .ui_components.options_control_frame import OptionsControlFrame
     from .ui_components.path_selection_frame import PathSelectionFrame

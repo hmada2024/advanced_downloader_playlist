@@ -1,3 +1,4 @@
+# main.py
 # -- ملف نقطة الدخول الرئيسي لتشغيل التطبيق --
 # Purpose: Main entry point script to run the application.
 
@@ -9,13 +10,15 @@ from typing import Optional  # Added typing
 # --- Import Core Application Classes ---
 # Ensure correct import paths if project structure changes
 try:
-    from src.ui_interface import UserInterface
-    from src.logic_handler import LogicHandler
+    # <<<--- التعديل هنا --->>>
+    from src.ui.ui_interface import UserInterface
+    from src.logic.logic_handler import LogicHandler
 except ImportError as e:
     # Handle import errors, maybe provide guidance if run from wrong directory
     print(f"Import Error: {e}")
     print(
         "Please ensure you are running this script from the project's root directory"
+        " (the one containing the 'src' folder)"
         " or that the 'src' package is correctly installed/accessible."
     )
     sys.exit(1)  # Exit if core components can't be imported

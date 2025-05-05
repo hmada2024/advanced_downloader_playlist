@@ -10,7 +10,7 @@ from src.ui_state_manager import BTN_TXT_DOWNLOAD_SELECTION, BTN_TXT_DOWNLOAD_VI
 # Conditional import for type hinting
 if TYPE_CHECKING:
     import customtkinter as ctk
-    from .ui_interface import UserInterface
+    from .ui.ui_interface import UserInterface
     from .logic_handler import LogicHandler
 
 # --- Constants for Message Box Titles and Messages ---

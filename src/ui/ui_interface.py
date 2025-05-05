@@ -7,19 +7,19 @@ from typing import Optional, Dict, Any, Callable  # استيراد أنواع ا
 
 # --- استيراد كلاسات المنطق والـ Handler ---
 # استخدام Optional لأن logic_handler قد يتم حقنه بعد الإنشاء
-from .logic_handler import LogicHandler, Optional
+from ..logic_handler import LogicHandler, Optional
 
 # استيراد كلاسات Mixin (التي توفر وظائف لـ UserInterface)
-from .ui_state_manager import UIStateManagerMixin
-from .ui_callback_handler import UICallbackHandlerMixin
-from .ui_action_handler import UIActionHandlerMixin
+from ..ui_state_manager import UIStateManagerMixin
+from ..ui_callback_handler import UICallbackHandlerMixin
+from ..ui_action_handler import UIActionHandlerMixin
 
 # --- استيراد كلاسات مكونات الواجهة ---
-from .ui_components.top_input_frame import TopInputFrame
-from .ui_components.options_control_frame import OptionsControlFrame
-from .ui_components.path_selection_frame import PathSelectionFrame
-from .ui_components.bottom_controls_frame import BottomControlsFrame
-from .ui_components.playlist_selector import PlaylistSelector
+from ..ui_components.top_input_frame import TopInputFrame
+from ..ui_components.options_control_frame import OptionsControlFrame
+from ..ui_components.path_selection_frame import PathSelectionFrame
+from ..ui_components.bottom_controls_frame import BottomControlsFrame
+from ..ui_components.playlist_selector import PlaylistSelector
 
 # --- الثوابت ---
 APP_TITLE = "Advanced Downloader"  # عنوان التطبيق
