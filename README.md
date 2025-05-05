@@ -209,3 +209,50 @@ This project is licensed under the **[Your Chosen License Name]**. See the [LICE
 *   **FFmpeg team:** For the essential multimedia framework used for merging and conversion. ([FFmpeg Website](https://ffmpeg.org/))
 *   **Tom Schimansky:** For the wonderful CustomTkinter library that makes modern GUI development in Python much easier. ([CustomTkinter GitHub](https://github.com/TomSchimansky/CustomTkinter))
 *   The **Python** community.
+
+📁 Advanced Spider Fetch Project/
+│
+├── 📄 main.py                 # نقطة الدخول، تهيئة UI والمنطق و HistoryManager
+│
+├── 📄 requirements.txt        # المكتبات الخارجية
+│
+├── 📁 ffmpeg_bin/              # مجلد FFmpeg
+│   ├── 📄 ffmpeg.exe
+│   └── 📄 ffprobe.exe
+│
+├── 📄 advanced_downloader_history.db  # (يتم إنشاؤه تلقائيًا بواسطة HistoryManager)
+│
+└── 📁 src/                     # كود المصدر
+│
+├── 📁 logic/               # المنطق الخلفي
+│   │
+│   ├── 📄 downloader_constants.py
+│   ├── 📄 downloader_hooks.py    # يحتوي على ProgressHookHandler و PostprocessorHookHandler (مع منطق النقل/إعادة التسمية)
+│   ├── 📄 downloader_utils.py
+│   ├── 📄 downloader.py        # يوجه yt-dlp للمجلد المؤقت، لا يحتوي على منطق النقل
+│   ├── 📄 exceptions.py
+│   ├── 📄 info_fetcher.py
+│   ├── 📄 link_fetcher.py
+│   ├── 📄 logic_handler.py    # المنسق الرئيسي للتحميل وجلب المعلومات
+│   ├── 📄 history_manager.py   # <<< جديد: إدارة قاعدة بيانات السجل
+│   └── 📄 utils.py           # يحتوي على find_ffmpeg و get_temp_dir و clean_filename
+│
+└── 📁 ui/                  # الواجهة الرسومية
+│
+├── 📄 action_handler.py   # Mixin لأفعال المستخدم
+├── 📄 callback_handler.py # Mixin للكولباكات
+├── 📄 state_manager.py    # Mixin لإدارة حالة الواجهة
+│
+├── 📄 interface.py      # الكلاس الرئيسي للواجهة (UserInterface)، يجمع التبويبات والـ Mixins
+│
+├── 📄 get_links_tab.py    # الكود الخاص بتبويب Get Links (يتفاعل مع HistoryManager)
+├── 📄 history_tab.py      # <<< جديد: الكود الخاص بتبويب History (يتفاعل مع HistoryManager و UserInterface)
+│
+└── 📁 components/         # مكونات الواجهة القابلة لإعادة الاستخدام
+│
+├── 📄 bottom_controls_frame.py
+├── 📄 options_control_frame.py
+├── 📄 path_selection_frame.py
+├── 📄 playlist_selector.py
+└── 📄 top_input_frame.py
+ثانيا ملفات الكود :
