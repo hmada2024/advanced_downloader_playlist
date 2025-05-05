@@ -2,13 +2,14 @@
 # Purpose: Main entry point script to run the application.
 
 import customtkinter as ctk
-
-# استيراد الكلاسات الرئيسية من حزمة src الجديدة
-# Import the main classes from the new src package
-from src.ui_interface import UserInterface  # <-- تم التعديل: استخدام src.
-from src.logic_handler import LogicHandler  # <-- تم التعديل: استخدام src.
 import sys
 import os
+from pathlib import Path  # <-- إضافة: لاستخدام Path.home()
+
+# استيراد الكلاسات الرئيسية من حزمة src بالأسماء الجديدة
+# Import the main classes from the src package with new names
+from src.ui_interface import UserInterface  # <-- تم التعديل: إزالة الشرطة السفلية
+from src.logic_handler import LogicHandler  # <-- تم التعديل: إزالة الشرطة السفلية
 
 # Optional High DPI handling (Uncomment if needed)
 # try:
@@ -21,16 +22,12 @@ import os
 #     try:
 #         # PROCESS_SYSTEM_DPI_AWARE = 1, PROCESS_PER_MONITOR_DPI_AWARE = 2
 #         PROCESS_PER_MONITOR_DPI_AWARE_V2 = 2
-#         # Earlier Windows versions might only support 1 (System Aware)
-#         # Windows 10 Creators Update (1703) added support for 2 (Per-Monitor v2)
 #         windll.shcore.SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE_V2)
 #         print("High DPI awareness set (Per-Monitor v2).")
 #         return True
 #     except AttributeError:
-#         # Function doesn't exist (older Windows or non-Windows)
 #         print("Could not set Per-Monitor v2 DPI awareness (likely older Windows or not Windows).")
 #         try:
-#             # Try setting system DPI awareness instead
 #             windll.user32.SetProcessDPIAware()
 #             print("High DPI awareness set (System Aware).")
 #             return True
@@ -53,15 +50,43 @@ if __name__ == "__main__":
         application_path = os.path.dirname(sys.executable)
     else:
         try:
-            application_path = os.path.dirname(
-                os.path.abspath(__file__)
-            )  # Use abspath for reliability
+            application_path = os.path.dirname(os.path.abspath(__file__))
         except NameError:
             application_path = os.getcwd()
 
     # --- إنشاء مكونات التطبيق --- Instantiate application components ---
     # إنشاء نسخة الواجهة أولاً Create UI instance first
     app = UserInterface(logic_handler=None)
+
+    # --- إضافة: تحديد مسار الحفظ الافتراضي --- Start: Determine Default Save Path ---
+    default_path_to_set = None
+    try:
+        downloads_path = Path.home() / "Downloads"
+        if downloads_path.is_dir():  # التحقق من وجود المجلد Check if directory exists
+            default_path_to_set = str(downloads_path)
+        else:
+            # إذا لم يوجد مجلد Downloads، حاول استخدام مجلد المنزل
+            # If Downloads folder doesn't exist, try using the home directory
+            home_path = Path.home()
+            if home_path.is_dir():
+                default_path_to_set = str(home_path)
+                print(
+                    f"Warning: 'Downloads' folder not found. Using home directory '{home_path}' as default save path."
+                )
+            else:
+                print(
+                    "Warning: Could not find 'Downloads' or Home directory. No default save path set."
+                )
+    except Exception as e:
+        print(f"Error determining default save path: {e}")
+
+    # قم بتعيين المسار الافتراضي في الواجهة إذا تم العثور عليه
+    # Set the default path in the UI if found
+    if default_path_to_set:
+        # التأكد من أن الواجهة جاهزة قبل استدعاء الدالة (يتم استدعاؤه بعد التهيئة وقبل mainloop)
+        # Ensure UI is ready before calling the method (called after init, before mainloop)
+        app.set_default_save_path(default_path_to_set)
+    # --- إضافة: تحديد مسار الحفظ الافتراضي --- End: Determine Default Save Path ---
 
     # إنشاء نسخة المنطق وتمرير دوال الكول باك من الواجهة إليه Create logic instance and pass UI callbacks
     logic = LogicHandler(

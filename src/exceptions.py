@@ -1,3 +1,4 @@
+# src/exceptions.py
 # -- ملف لتعريف الاستثناءات (الأخطاء) المخصصة للتطبيق --
 # Purpose: Defines custom exceptions used across the application.
 

@@ -1,3 +1,4 @@
+# src/ui_components/top_input_frame.py
 # -- ملف لمكون إطار الإدخال العلوي (الرابط وزر الجلب) --
 # Purpose: UI component for the top input frame (URL entry and Fetch button).
 
@@ -10,23 +11,11 @@ class TopInputFrame(ctk.CTkFrame):
     """Frame containing the URL input field and the Fetch Info button."""
 
     def __init__(self, master, fetch_command, **kwargs):
-        """
-        تهيئة الإطار.
-        Initializes the frame.
-
-        Args:
-            master: الويدجت الأب (النافذة الرئيسية). Parent widget (main window).
-            fetch_command (callable): الدالة التي تُستدعى عند الضغط على زر الجلب. Function to call when Fetch button is clicked.
-        """
         super().__init__(master, fg_color="transparent", **kwargs)
         self.fetch_command = fetch_command
 
-        # إعداد الشبكة الداخلية للإطار Configure internal grid
-        self.grid_columnconfigure(
-            1, weight=1
-        )  # السماح لحقل الإدخال بالتمدد Allow entry field to expand
+        self.grid_columnconfigure(1, weight=1)
 
-        # إنشاء وعرض العناصر Create and grid the widgets
         self.url_label = ctk.CTkLabel(self, text="Video/Playlist URL:")
         self.url_label.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="w")
 
@@ -42,31 +31,24 @@ class TopInputFrame(ctk.CTkFrame):
 
     def get_url(self):
         """تُرجع النص الموجود في حقل إدخال الرابط."""
-        """Returns the text currently in the URL entry field."""
         return self.url_entry.get()
 
     def set_url(self, url_text):
         """تحدد النص في حقل إدخال الرابط."""
-        """Sets the text in the URL entry field."""
         self.url_entry.delete(0, "end")
         self.url_entry.insert(0, url_text)
 
     def enable_fetch(self):
         """تمكين حقل الإدخال وزر الجلب."""
-        self._extracted_from_disable_fetch_3(
-            """Enables the entry field and fetch button.""", "normal", "Fetch Info"
-        )
+        self._set_fetch_state("normal", "Fetch Info")
 
     def disable_fetch(self, button_text="Fetching..."):
         """تعطيل حقل الإدخال وزر الجلب وتغيير نص الزر."""
-        self._extracted_from_disable_fetch_3(
-            """Disables the entry field and fetch button, changing the button text.""",
-            "disabled",
-            button_text,
-        )
+        self._set_fetch_state("disabled", button_text)
 
-    # TODO Rename this here and in `enable_fetch` and `disable_fetch`
-    def _extracted_from_disable_fetch_3(self, arg0, state, text):
-        arg0
-        self.url_entry.configure(state=state)
-        self.fetch_button.configure(state=state, text=text)
+    def _set_fetch_state(self, entry_state, button_text):
+        """Helper method to set state for URL entry and fetch button."""
+        self.url_entry.configure(state=entry_state)
+        self.fetch_button.configure(
+            state=entry_state, text=button_text
+        )  # Button state matches entry state
