@@ -1,6 +1,6 @@
-# main.py (الآن في المجلد الجذر للمشروع)
+# main.py (في المجلد الجذر للمشروع)
 # -- ملف نقطة الدخول الرئيسي لتشغيل التطبيق --
-# Purpose: Main entry point script to run the application.
+# -- Modified to initialize and pass HistoryManager --
 
 import sys
 import os
@@ -8,72 +8,122 @@ from pathlib import Path
 from typing import Optional
 
 # --- Import Core Application Classes ---
-# <<<--- التعديل هنا: إضافة 'src.' قبل الوحدات الفرعية --->>>
 try:
-    # استيراد من الحزمة 'src'
-    from src.ui.interface import UserInterface # تأكد من اسم الملف الصحيح (interface.py)
+    from src.ui.interface import UserInterface
     from src.logic.logic_handler import LogicHandler
+    from src.logic.history_manager import (
+        HistoryManager,
+    )  # <<< إضافة: استيراد HistoryManager
 except ImportError as e:
-    # Handle import errors, maybe provide guidance if run from wrong directory
     print(f"Import Error: {e}")
-    # تعديل رسالة الخطأ لتناسب الحالة
     print(
         "Import Error. Ensure you are running 'python main.py' from the project's root directory"
-        " (the one containing 'main.py' and the 'src' folder)"
-        " and that the 'src' package and its subpackages ('ui', 'logic', 'components')"
-        " contain necessary '__init__.py' files."
+        " and that the 'src' package and subpackages contain '__init__.py' files."
     )
-    sys.exit(1) # Exit if core components can't be imported
+    # إضافة مسار src إلى sys.path كحل بديل محتمل إذا لزم الأمر
+    # project_root = Path(__file__).resolve().parent
+    # src_path = project_root / 'src'
+    # if src_path.is_dir():
+    #     print(f"Attempting to add {src_path} to sys.path")
+    #     sys.path.insert(0, str(project_root))
+    #     try:
+    #         from src.ui.interface import UserInterface
+    #         from src.logic.logic_handler import LogicHandler
+    #         from src.logic.history_manager import HistoryManager
+    #         print("Import successful after adding path.")
+    #     except ImportError:
+    #         print("Import still failed after adding path.")
+    #         sys.exit(1)
+    # else:
+    #      print(f"src directory not found at {src_path}")
+    #      sys.exit(1)
+    sys.exit(1)  # Exit if core components can't be imported
 
 
 # --- Optional High DPI Awareness (Windows) ---
-# (الكود الخاص بـ set_high_dpi_awareness يبقى كما هو إذا كنت تستخدمه)
-# ...
+def set_high_dpi_awareness():
+    """Attempts to enable high DPI awareness on Windows."""
+    try:
+        from ctypes import windll
+
+        windll.shcore.SetProcessDpiAwareness(1)  # Try 1 for system aware
+        print("High DPI awareness set (System Aware).")
+    except ImportError:
+        print(
+            "ctypes not available, cannot set DPI awareness."
+        )  # Not Windows or ctypes missing
+    except AttributeError:
+        print(
+            "Setting DPI awareness failed (might be older Windows version)."
+        )  # Function doesn't exist
+    except Exception as e:
+        print(f"An unexpected error occurred while setting DPI awareness: {e}")
+
 
 # --- Main Execution Block ---
 if __name__ == "__main__":
     # --- Optional: Enable High DPI ---
-    # set_high_dpi_awareness() # Uncomment this line if needed
+    if sys.platform == "win32":  # Only attempt on Windows
+        set_high_dpi_awareness()
 
-    # --- Determine Application Path (for bundled resources like ffmpeg) ---
-    # (الكود الخاص بتحديد المسار يبقى كما هو)
+    # --- Determine Application Path ---
+    # (الكود الخاص بتحديد المسار يبقى كما هو إذا كنت تستخدمه)
     # ...
 
     # --- Instantiate Application Components ---
-    # 1. Create the main UI window instance first. Logic handler is initially None.
-    app: UserInterface = UserInterface(logic_handler=None)
 
-    # 2. Determine Default Save Path (User's Downloads folder)
+    # 1. <<< إضافة: إنشاء HistoryManager أولاً >>>
+    # سيتم إنشاء ملف قاعدة البيانات في نفس مجلد main.py افتراضيًا
+    history_manager = HistoryManager()
+    if not history_manager.conn:  # Check if DB connection failed during init
+        print("FATAL ERROR: Could not initialize History Database. Exiting.")
+        # Optionally show a simple Tkinter error message before exiting
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()  # Hide the main empty window
+            messagebox.showerror(
+                "Initialization Error",
+                "Failed to initialize the history database.\nPlease check file permissions or disk space.",
+            )
+            root.destroy()
+        except Exception as tk_error:
+            print(f"Could not show Tkinter error message: {tk_error}")
+        sys.exit(1)
+
+    # 2. Create the main UI window instance, passing the history manager.
+    app = UserInterface(
+        logic_handler=None,
+        history_manager=history_manager,  # <<< تعديل: تمرير history_manager
+    )
+
+    # 3. Determine and Set Default Save Path
     default_path_to_set: Optional[str] = None
     try:
-        # Standard Downloads folder path
         downloads_path: Path = Path.home() / "Downloads"
-        if downloads_path.is_dir():  # Check if the directory exists
+        if downloads_path.is_dir():
             default_path_to_set = str(downloads_path)
         else:
-            # Fallback to user's home directory if Downloads doesn't exist
             home_path: Path = Path.home()
             if home_path.is_dir():
                 default_path_to_set = str(home_path)
                 print(
-                    f"Warning: 'Downloads' folder not found. Using home directory '{home_path}' as default save path."
+                    f"Warning: 'Downloads' folder not found. Using home directory '{home_path}' as default."
                 )
             else:
-                # Very unlikely case where home directory is also inaccessible
                 print(
                     "Warning: Could not find 'Downloads' or Home directory. No default save path set."
                 )
     except Exception as e:
-        # Catch any errors during path finding (e.g., permissions)
         print(f"Error determining default save path: {e}")
 
-    # 3. Set the default path in the UI *after* the UI is initialized
     if default_path_to_set:
-        # Use the dedicated method in the UI class
         app.set_default_save_path(default_path_to_set)
 
-    # 4. Create the Logic Handler instance, passing callback methods from the UI instance
-    logic: LogicHandler = LogicHandler(
+    # 4. Create the Logic Handler instance, passing callbacks from the UI instance.
+    logic = LogicHandler(
         status_callback=app.update_status,
         progress_callback=app.update_progress,
         finished_callback=app.on_task_finished,
@@ -81,10 +131,29 @@ if __name__ == "__main__":
         info_error_callback=app.on_info_error,
     )
 
-    # 5. Link the Logic Handler instance back to the UI instance
+    # 5. Link the Logic Handler instance back to the UI instance.
     app.logic = logic
+
+    # <<< إضافة: تسجيل دالة لإغلاق قاعدة البيانات عند إغلاق الواجهة >>>
+    def on_closing():
+        print("Main: Close button pressed. Closing database and destroying window.")
+        history_manager.close_db()
+        app.destroy()
+
+    app.protocol("WM_DELETE_WINDOW", on_closing)
 
     # --- Run the Application ---
     print("Starting application main loop...")
-    app.mainloop()
-    print("Application main loop finished.")
+    try:
+        app.mainloop()
+    except Exception as e:
+        print(f"FATAL ERROR in main loop: {e}")
+        import traceback
+
+        traceback.print_exc()
+        # Ensure DB is closed even on unexpected mainloop error
+        history_manager.close_db()
+    finally:
+        # This might not be reached if process terminates abruptly
+        print("Application main loop finished.")
+        # history_manager.close_db() # Already closed in on_closing or finally block

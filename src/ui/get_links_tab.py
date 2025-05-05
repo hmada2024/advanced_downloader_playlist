@@ -1,146 +1,142 @@
 # src/ui/get_links_tab.py
 # -- محتوى تبويب جلب روابط قائمة التشغيل --
-# Purpose: Contains the UI content and logic for the "Get Playlist Links" tab.
+# -- Modified to integrate History logging --
 
 import customtkinter as ctk
 import threading
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
-
-# --- <<< تصحيح: إضافة Any إلى الاستيراد >>> ---
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, Any, TYPE_CHECKING
 
 # --- Imports from project ---
-# Assuming this file is in src/ui/, we need to go up one level ('..') then into 'logic'
 from ..logic.link_fetcher import LinkFetcher
 from ..logic.utils import find_ffmpeg
 
-# Import format choices - assuming options_control_frame defines them
-# If not, define them here or import from downloader_constants
+# Conditional import for type hinting HistoryManager
+if TYPE_CHECKING:
+    from ..logic.history_manager import HistoryManager
+
 try:
     from .components.options_control_frame import (
         DEFAULT_FORMAT_OPTIONS,
         DEFAULT_FORMAT_SELECTION,
     )
 except ImportError:
-    # Fallback if constants are moved or structure changes
     print(
         "Warning: Could not import format constants from options_control_frame. Using fallback."
     )
-    DEFAULT_FORMAT_OPTIONS = ["best", "worst"]  # Basic fallback
+    DEFAULT_FORMAT_OPTIONS = ["best", "worst"]
     DEFAULT_FORMAT_SELECTION = "best"
 
 
 class GetLinksTab(ctk.CTkFrame):
     """
     يمثل محتوى الواجهة الرسومية والمنطق الخاص بتبويب جلب روابط قائمة التشغيل.
-    Represents the GUI content and logic for the 'Get Playlist Links' tab.
+    Logs successful operations to history.
     """
 
-    # --- <<< تصحيح: استخدام Any المستوردة هنا >>> ---
-    def __init__(self, master: Any, **kwargs: Any):
+    def __init__(
+        self,
+        master: Any,
+        history_manager: Optional["HistoryManager"] = None,
+        **kwargs: Any,
+    ):  # <<< تعديل: استقبال history_manager
         """
         تهيئة إطار تبويب جلب الروابط.
         Args:
-            master (Any): الويدجت الأب (إطار التبويب من CTkTabView).
+            master (Any): الويدجت الأب.
+            history_manager (Optional[HistoryManager]): Instance for logging history.
             **kwargs: وسائط إضافية لـ CTkFrame.
         """
         super().__init__(master, fg_color="transparent", **kwargs)
         print("GetLinksTab: Initializing...")
 
         # --- الحالة الداخلية ---
+        self.history_manager: Optional["HistoryManager"] = (
+            history_manager  # <<< إضافة: تخزين history_manager
+        )
         self.cancel_event = threading.Event()
         self.current_thread: Optional[threading.Thread] = None
         self.fetched_links: List[str] = []
-        self.ffmpeg_path: Optional[str] = find_ffmpeg()  # البحث عن ffmpeg عند التهيئة
+        self.ffmpeg_path: Optional[str] = find_ffmpeg()
 
         # --- تكوين تخطيط الشبكة ---
-        self.grid_columnconfigure(1, weight=1)  # عمود حقل الإدخال ومربع النص يتمدد
-        # الصفوف: 0: URL, 1: Format, 2: Fetch/Cancel Buttons, 3: Result Textbox, 4: Copy/Save Buttons, 5: Status
-        self.grid_rowconfigure(3, weight=1)  # صف مربع النص يتمدد رأسيًا
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(3, weight=1)
 
         # --- عناصر واجهة المستخدم ---
-
-        # 1. إدخال رابط قائمة التشغيل
+        # (الكود الأصلي لإنشاء الويدجتس يبقى كما هو)
+        # 1. URL Input
         self.url_label = ctk.CTkLabel(self, text="Playlist URL:")
         self.url_label.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="w")
         self.url_entry = ctk.CTkEntry(
             self, placeholder_text="Enter YouTube Playlist URL"
         )
         self.url_entry.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        self.url_entry.bind(
-            "<Return>", lambda event: self._on_get_links_click()
-        )  # ربط Enter
+        self.url_entry.bind("<Return>", lambda event: self._on_get_links_click())
 
-        # 2. اختيار الصيغة/الجودة
+        # 2. Format Selection
         self.format_label = ctk.CTkLabel(self, text="Select Quality:")
         self.format_label.grid(row=1, column=0, padx=(10, 5), pady=5, sticky="w")
         self.format_combobox = ctk.CTkComboBox(
-            self, values=DEFAULT_FORMAT_OPTIONS, width=350  # عرض أكبر قليلاً
+            self, values=DEFAULT_FORMAT_OPTIONS, width=350
         )
         self.format_combobox.set(DEFAULT_FORMAT_SELECTION)
         self.format_combobox.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
-        # 3. أزرار التحكم الرئيسية (جلب/إلغاء)
+        # 3. Control Buttons (Fetch/Cancel)
         self.control_button_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.control_button_frame.grid(
             row=2, column=0, columnspan=2, pady=(5, 10), sticky="ew"
         )
-        self.control_button_frame.grid_columnconfigure(0, weight=1)  # زر الجلب يتمدد
-
+        self.control_button_frame.grid_columnconfigure(0, weight=1)
         self.get_links_button = ctk.CTkButton(
             self.control_button_frame,
             text="Get Links",
             command=self._on_get_links_click,
         )
         self.get_links_button.grid(row=0, column=0, padx=(10, 5), sticky="ew")
-
         self.cancel_button = ctk.CTkButton(
             self.control_button_frame,
             text="Cancel",
             command=self._on_cancel_click,
-            state="disabled",  # يبدأ معطلاً
+            state="disabled",
             fg_color="red",
             hover_color="darkred",
         )
-        # زر الإلغاء يتم وضعه/إزالته ديناميكيًا
+        # Cancel button gridded dynamically
 
-        # 4. مربع النص لعرض الروابط
+        # 4. Links Textbox
         self.links_textbox = ctk.CTkTextbox(
-            self,
-            wrap="none",  # منع التفاف النص لرؤية الروابط كاملة
-            state="disabled",  # يبدأ معطلاً للقراءة فقط
-            height=200,  # ارتفاع افتراضي
+            self, wrap="none", state="disabled", height=200
         )
         self.links_textbox.grid(
             row=3, column=0, columnspan=2, padx=10, pady=5, sticky="nsew"
         )
 
-        # 5. أزرار التحكم بالنتائج (نسخ/حفظ)
+        # 5. Result Buttons (Copy/Save)
         self.result_button_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.result_button_frame.grid(
             row=4, column=0, columnspan=2, pady=5, sticky="ew"
         )
-        self.result_button_frame.grid_columnconfigure(0, weight=1)  # زر النسخ
-        self.result_button_frame.grid_columnconfigure(1, weight=1)  # زر الحفظ
-
+        self.result_button_frame.grid_columnconfigure(0, weight=1)
+        self.result_button_frame.grid_columnconfigure(1, weight=1)
         self.copy_button = ctk.CTkButton(
             self.result_button_frame,
             text="Copy Links to Clipboard",
             command=self._on_copy_click,
-            state="disabled",  # يبدأ معطلاً
+            state="disabled",
         )
         self.copy_button.grid(row=0, column=0, padx=(10, 5), sticky="ew")
-
         self.save_button = ctk.CTkButton(
             self.result_button_frame,
             text="Save Links to File...",
             command=self._on_save_click,
-            state="disabled",  # يبدأ معطلاً
+            state="disabled",
         )
         self.save_button.grid(row=0, column=1, padx=(5, 10), sticky="ew")
 
-        # 6. ليبل الحالة
+        # 6. Status Label
         self.status_label = ctk.CTkLabel(
             self, text="Enter playlist URL and select quality.", text_color="gray"
         )
@@ -150,8 +146,8 @@ class GetLinksTab(ctk.CTkFrame):
 
         print("GetLinksTab: Initialization complete.")
 
-    # --- معالجات الأحداث (تُستدعى بواسطة أفعال المستخدم) ---
-
+    # --- معالجات الأحداث ---
+    # ( _on_get_links_click, _on_copy_click, _on_save_click, _on_cancel_click - الكود الأصلي يبقى كما هو)
     def _on_get_links_click(self) -> None:
         """يتم استدعاؤها عند الضغط على زر 'Get Links'."""
         print("GetLinksTab: Get Links button clicked.")
@@ -168,19 +164,13 @@ class GetLinksTab(ctk.CTkFrame):
             )
             return
 
-        # الدخول في حالة الجلب
         self._enter_fetching_state()
-
-        # مسح النتائج السابقة
         self.fetched_links = []
         self.links_textbox.configure(state="normal")
         self.links_textbox.delete("1.0", "end")
         self.links_textbox.configure(state="disabled")
-
-        # إعادة تعيين حدث الإلغاء
         self.cancel_event.clear()
 
-        # إنشاء وتشغيل خيط جلب الروابط
         link_fetcher_instance = LinkFetcher(
             playlist_url=playlist_url,
             format_choice=format_choice,
@@ -191,7 +181,6 @@ class GetLinksTab(ctk.CTkFrame):
             status_callback=self._update_status,
             finished_callback=self._on_fetch_finished,
         )
-
         self.current_thread = threading.Thread(
             target=link_fetcher_instance.run, daemon=True
         )
@@ -205,12 +194,11 @@ class GetLinksTab(ctk.CTkFrame):
                 self.clipboard_clear()
                 self.clipboard_append(links_text)
                 self._update_status("Links copied to clipboard!")
-                # جعل رسالة النسخ مؤقتة (اختياري)
                 self.after(
                     3000,
                     lambda: (
                         self._update_status("Ready.")
-                        if not self.current_thread
+                        if not (self.current_thread and self.current_thread.is_alive())
                         else None
                     ),
                 )
@@ -226,26 +214,25 @@ class GetLinksTab(ctk.CTkFrame):
         if not self.fetched_links:
             self._update_status("No links to save.")
             return
-
         try:
             if file_path := filedialog.asksaveasfilename(
                 title="Save Playlist Links",
                 defaultextension=".txt",
                 filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
-                initialfile="playlist_links.txt",  # اسم افتراضي مقترح
+                initialfile="playlist_links.txt",
             ):
                 links_text = "\n".join(self.fetched_links)
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(links_text)
-                self._update_status(f"Links saved to: {file_path}")
-                # جعل الرسالة مؤقتة (اختياري)
+                self._update_status(f"Links saved to: {os.path.basename(file_path)}")
                 self.after(
                     5000,
                     lambda: (
-                        None if self.current_thread else self._update_status("Ready.")
+                        self._update_status("Ready.")
+                        if not (self.current_thread and self.current_thread.is_alive())
+                        else None
                     ),
                 )
-
         except Exception as e:
             print(f"Error saving links to file: {e}")
             messagebox.showerror("Save Error", f"Could not save links: {e}")
@@ -256,16 +243,29 @@ class GetLinksTab(ctk.CTkFrame):
         if self.current_thread and self.current_thread.is_alive():
             self._update_status("Cancellation requested...")
             self.cancel_event.set()
-            self.cancel_button.configure(state="disabled")  # تعطيل زر الإلغاء فورًا
+            self.cancel_button.configure(state="disabled")
         else:
             self._update_status("Nothing to cancel.")
 
-    # --- دوال الكولباك (تُستدعى بواسطة LinkFetcher من خيط آخر) ---
+    # --- دوال الكولباك ---
 
     def _on_links_success(self, links: List[str]) -> None:
-        """تُنفذ عند نجاح جلب الروابط (تستدعى من الخيط الرئيسي باستخدام after)."""
+        """تُنفذ عند نجاح جلب الروابط. تسجل في السجل."""
+
+        # <<< إضافة: تسجيل السجل عند النجاح >>>
+        if self.history_manager:
+            current_url = self.url_entry.get()  # Get URL from entry field
+            # Try to create a meaningful title
+            title = f"Playlist Links ({len(links)} items)"
+            if current_url:  # Only log if URL is present
+                self.history_manager.add_entry(
+                    url=current_url, title=title, operation_type="Get Links"
+                )
+            else:
+                print("GetLinksTab Warning: URL field was empty, skipping history log.")
 
         def update_ui():
+            # --- باقي الكود الأصلي للدالة ---
             print(f"GetLinksTab: Received {len(links)} links successfully.")
             self.fetched_links = links
             links_text = "\n".join(links)
@@ -279,55 +279,59 @@ class GetLinksTab(ctk.CTkFrame):
             self.save_button.configure(state="normal")
             self._update_status(f"Successfully fetched {len(links)} links.")
 
-        self.after(0, update_ui)  # التنفيذ في الخيط الرئيسي فورًا
+        self.after(0, update_ui)
 
+    # ( _on_links_error, _update_status, _on_fetch_finished - الكود الأصلي يبقى كما هو)
     def _on_links_error(self, error_msg: str) -> None:
-        """تُنفذ عند فشل جلب الروابط (تستدعى من الخيط الرئيسي باستخدام after)."""
+        """تُنفذ عند فشل جلب الروابط."""
 
         def update_ui():
             print(f"GetLinksTab: Link fetch error: {error_msg}")
-            self._update_status(f"Error: {error_msg}")  # تحديث ليبل الحالة بالخطأ
-            # يمكن إضافة messagebox هنا إذا أردت مربع حوار منفصل
+            self._update_status(f"Error: {error_msg}", error=True)  # Pass error flag
+            # Optionally show a messagebox
             # messagebox.showerror("Fetch Error", f"Could not fetch links:\n{error_msg}")
 
         self.after(0, update_ui)
 
-    def _update_status(self, message: str) -> None:
-        """تحديث ليبل الحالة الخاص بهذا التبويب (تستدعى من الخيط الرئيسي باستخدام after)."""
+    def _update_status(
+        self,
+        message: str,
+        error: bool = False,
+        success: bool = False,
+        info: bool = False,
+        warning: bool = False,
+    ) -> None:
+        """تحديث ليبل الحالة الخاص بهذا التبويب."""
 
         def update_ui():
-            # تحديد لون النص بناءً على الرسالة (اختياري)
             color = "gray"
-            msg_lower = message.lower()
-            if "error" in msg_lower:
+            if error:
                 color = "red"
-            elif "cancel" in msg_lower:
+            elif success or "saved" in message.lower() or "copied" in message.lower():
+                color = "green"
+            elif warning or "cancel" in message.lower():
                 color = "orange"
             elif (
-                "success" in msg_lower or "saved" in msg_lower or "copied" in msg_lower
+                info or "fetching" in message.lower() or "preparing" in message.lower()
             ):
-                color = "green"
-            elif "fetching" in msg_lower or "preparing" in msg_lower:
                 color = "blue"
-
             self.status_label.configure(text=message, text_color=color)
 
         self.after(0, update_ui)
 
     def _on_fetch_finished(self) -> None:
-        """تُنفذ عند انتهاء عملية الجلب (نجاح، فشل، إلغاء) (تستدعى من الخيط الرئيسي باستخدام after)."""
+        """تُنفذ عند انتهاء عملية الجلب."""
 
         def update_ui():
             print("GetLinksTab: Fetch operation finished.")
-            self._enter_idle_state()  # إعادة الواجهة للحالة الخاملة
+            self._enter_idle_state()
 
-        # تأخير بسيط لضمان معالجة آخر رسالة حالة قبل إعادة التمكين
         self.after(100, update_ui)
 
     # --- إدارة حالة الواجهة ---
-
+    # ( _set_controls_state, _enter_fetching_state, _enter_idle_state - الكود الأصلي يبقى كما هو)
     def _set_controls_state(self, state: str) -> None:
-        """تمكين/تعطيل عناصر التحكم الرئيسية (الإدخال، الكومبوبوكس، زر الجلب)."""
+        """تمكين/تعطيل عناصر التحكم الرئيسية."""
         self.url_entry.configure(state=state)
         self.format_combobox.configure(state=state)
         self.get_links_button.configure(state=state)
@@ -338,41 +342,25 @@ class GetLinksTab(ctk.CTkFrame):
         self._set_controls_state("disabled")
         self.copy_button.configure(state="disabled")
         self.save_button.configure(state="disabled")
-        # إظهار زر الإلغاء وتمكينه
-        self.cancel_button.grid(
-            row=0, column=1, padx=(5, 10), sticky="e"
-        )  # وضعه بجانب زر الجلب
-        self.get_links_button.grid_configure(sticky="ew")  # التأكد من تمدد زر الجلب
+        self.cancel_button.grid(row=0, column=1, padx=(5, 10), sticky="e")
         self.control_button_frame.grid_columnconfigure(
             1, weight=0
-        )  # Cancel button fixed width
+        )  # Reset weight if needed
         self.cancel_button.configure(state="normal")
-        self._update_status("Fetching links...")  # تحديث الحالة فورًا
+        self._update_status("Fetching links...", info=True)  # Use info flag
 
     def _enter_idle_state(self) -> None:
         """إعادة الواجهة إلى الحالة الخاملة."""
         print("GetLinksTab: Entering idle state.")
         self.current_thread = None
         self._set_controls_state("normal")
-        # تمكين أزرار النسخ/الحفظ فقط إذا كان هناك روابط
         result_buttons_state = "normal" if self.fetched_links else "disabled"
         self.copy_button.configure(state=result_buttons_state)
         self.save_button.configure(state=result_buttons_state)
-        # إخفاء وتعطيل زر الإلغاء
         self.cancel_button.grid_remove()
         self.cancel_button.configure(state="disabled")
-        # Remove column configuration for cancel button when hidden
-        self.control_button_frame.grid_columnconfigure(
-            1, weight=0
-        )  # Explicitly set back to 0 weight or configure as needed
-
-        # تحديث الحالة إذا لم تكن رسالة نجاح/خطأ
-        current_status = self.status_label.cget("text").lower()
-        if not (
-            "success" in current_status
-            or "error" in current_status
-            or "saved" in current_status
-            or "copied" in current_status
-            or "cancel" in current_status
-        ):
+        current_status_text = self.status_label.cget("text")
+        current_status_color = str(self.status_label.cget("text_color"))
+        # Only reset status if it wasn't a final success/error/cancel message
+        if current_status_color not in ["red", "green", "orange"]:
             self._update_status("Ready.")
