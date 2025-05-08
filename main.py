@@ -5,6 +5,7 @@
 import sys
 import os
 from pathlib import Path
+from tkinter import Tk
 from typing import Optional
 
 # --- Import Core Application Classes ---
@@ -79,10 +80,10 @@ if __name__ == "__main__":
         print("FATAL ERROR: Could not initialize History Database. Exiting.")
         # Optionally show a simple Tkinter error message before exiting
         try:
-            import tkinter as tk
+            import tkinter as tkPillow
             from tkinter import messagebox
 
-            root = tk.Tk()
+            root = Tk.Tk()
             root.withdraw()  # Hide the main empty window
             messagebox.showerror(
                 "Initialization Error",
