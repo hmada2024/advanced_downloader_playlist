@@ -1,44 +1,60 @@
 # src/ui/queue_tab.py
 # -- الواجهة الرسومية والمنطق لتبويب قائمة انتظار التحميل --
-# Purpose: UI and logic for the Download Queue tab.
+# -- Fixed initialization order for clear_finished_button --
 
 import customtkinter as ctk
 import tkinter.messagebox as messagebox
-from typing import TYPE_CHECKING, Dict, Any, Optional, Tuple, Union
-import uuid  # لتوليد معرفات فريدة للمهام
+from typing import TYPE_CHECKING, Dict, Any, Optional, Union
+import uuid
+
+from src.logic.downloader_constants import STATUS_DOWNLOAD_CANCELLED
 
 # Conditional import for type hinting
 if TYPE_CHECKING:
-    from ..logic.logic_handler import LogicHandler  # Import modified LogicHandler
-    from ..logic.history_manager import HistoryManager  # Keep HistoryManager import
+    from ..logic.logic_handler import LogicHandler
+    from ..logic.history_manager import HistoryManager
 
 # --- Constants ---
 TAB_TITLE = "Download Queue"
 FRAME_LABEL = "Current & Pending Downloads"
 BTN_CANCEL_TASK = "Cancel"
+BTN_CLEAR_FINISHED = "Clear Finished Tasks"
 NO_TASKS_MSG = "No downloads in queue."
-MAX_TITLE_DISPLAY_LEN_QUEUE = 50  # طول أقصر لعرض العنوان في القائمة
+MAX_TITLE_DISPLAY_LEN_QUEUE = 50
+MAX_ERROR_DISPLAY_LEN = 60
 
-# Define possible task statuses (يمكن تحسينها باستخدام Enum لاحقًا)
+# Define possible task statuses
 STATUS_PENDING = "Pending"
 STATUS_RUNNING = "Running"
-STATUS_DOWNLOADING = "Downloading"  # سيتم إضافة النسبة المئوية
-STATUS_PROCESSING = "Processing"  # للدمج وغيره
+STATUS_DOWNLOADING = "Downloading"
+STATUS_PROCESSING = "Processing"
 STATUS_COMPLETED = "Completed"
 STATUS_ERROR = "Error"
 STATUS_CANCELLING = "Cancelling..."
 STATUS_CANCELLED = "Cancelled"
 
-# ألوان الحالة
-STATUS_COLORS = {
-    STATUS_PENDING: "gray",
-    STATUS_RUNNING: "blue",
-    STATUS_DOWNLOADING: "blue",
-    STATUS_PROCESSING: "dodgerblue",
-    STATUS_COMPLETED: "green",
-    STATUS_ERROR: "red",
-    STATUS_CANCELLING: "orange",
-    STATUS_CANCELLED: "orange",
+# --- Define Colors ---
+COLOR_TEXT_NORMAL = ("gray10", "gray90")
+COLOR_TEXT_STATUS_PENDING = ("gray50", "gray50")
+COLOR_TEXT_STATUS_RUNNING = ("#1F618D", "#AED6F1")
+COLOR_TEXT_STATUS_COMPLETED = ("#1E8449", "#ABEBC6")
+COLOR_TEXT_STATUS_ERROR = ("#CB4335", "#F5B7B1")
+COLOR_TEXT_STATUS_CANCELLED = ("#D68910", "#FAD7A0")
+
+COLOR_BG_DEFAULT = ("gray92", "gray17")
+COLOR_BG_COMPLETED = ("#D5F5E3", "#1E462E")
+COLOR_BG_ERROR = ("#FADBD8", "#5E312C")
+COLOR_BG_CANCELLED = ("#FEF9E7", "#615C45")
+
+STATUS_TEXT_COLORS = {
+    STATUS_PENDING: COLOR_TEXT_STATUS_PENDING,
+    STATUS_RUNNING: COLOR_TEXT_STATUS_RUNNING,
+    STATUS_DOWNLOADING: COLOR_TEXT_STATUS_RUNNING,
+    STATUS_PROCESSING: COLOR_TEXT_STATUS_RUNNING,
+    STATUS_COMPLETED: COLOR_TEXT_STATUS_COMPLETED,
+    STATUS_ERROR: COLOR_TEXT_STATUS_ERROR,
+    STATUS_CANCELLING: COLOR_TEXT_STATUS_CANCELLED,
+    STATUS_CANCELLED: COLOR_TEXT_STATUS_CANCELLED,
 }
 
 # تخزين عناصر واجهة المستخدم لكل مهمة
@@ -48,127 +64,117 @@ TaskWidgets = Dict[
 
 
 class QueueTab(ctk.CTkFrame):
-    """
-    يمثل واجهة المستخدم والمنطق الخاص بتبويب عرض قائمة انتظار التحميل.
-    Represents the UI and logic for the Download Queue display tab.
-    """
+    """Represents the UI and logic for the Download Queue display tab."""
 
     def __init__(
         self,
         master: Any,
         logic_handler: "LogicHandler",
-        history_manager: Optional[
-            "HistoryManager"
-        ],  # Keep HistoryManager if needed elsewhere, but not used directly here
+        history_manager: Optional["HistoryManager"],
         **kwargs: Any,
     ):
-        """
-        Initializes the QueueTab frame.
-        Args:
-            master (Any): The parent widget (the CTkTabview tab frame).
-            logic_handler (LogicHandler): Instance to interact with the queue logic.
-            history_manager (Optional[HistoryManager]): History manager instance.
-            **kwargs: Additional arguments for CTkFrame.
-        """
         super().__init__(master, fg_color="transparent", **kwargs)
         print("QueueTab: Initializing...")
 
         self.logic_handler: "LogicHandler" = logic_handler
-        # self.history_manager = history_manager # Not directly used in this tab for now
-
-        # لتخزين عناصر الواجهة لكل مهمة، المفتاح هو task_id
         self.task_widgets: Dict[str, TaskWidgets] = {}
 
         # --- Configure Grid Layout ---
-        self.grid_rowconfigure(0, weight=1)  # Scrollable frame takes vertical space
-        self.grid_columnconfigure(0, weight=1)  # Everything spans the single column
+        self.grid_rowconfigure(0, weight=1)  # Scrollable frame row
+        self.grid_rowconfigure(1, weight=0)  # Button row
+        self.grid_columnconfigure(0, weight=1)
 
         # --- UI Elements ---
-
-        # 1. Scrollable Frame for Queue Entries
+        # 1. Scrollable Frame
         self.scrollable_frame = ctk.CTkScrollableFrame(self, label_text=FRAME_LABEL)
         self.scrollable_frame.grid(
             row=0, column=0, padx=10, pady=(10, 5), sticky="nsew"
         )
-        self.scrollable_frame.grid_columnconfigure(
-            0, weight=1
-        )  # Allow entry frames to expand horizontally
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)
 
-        # 2. Placeholder Label (shown when queue is empty)
+        # 2. Placeholder Label
         self.no_tasks_label = ctk.CTkLabel(
-            self.scrollable_frame, text=NO_TASKS_MSG, text_color="gray"
+            self.scrollable_frame, text=NO_TASKS_MSG, text_color=("gray60", "gray40")
         )
-        # Initially packed, will be removed when first task is added
 
-        # --- Initial Load / State ---
-        self._update_placeholder_visibility()
+        # 3. Clear Finished Button <<< DEFINITION MOVED HERE >>>
+        self.clear_finished_button = ctk.CTkButton(
+            self, text=BTN_CLEAR_FINISHED, command=self._handle_clear_finished
+        )
+        self.clear_finished_button.grid(
+            row=1, column=0, padx=10, pady=(5, 10), sticky="ew"
+        )
+        # Initial state will be set by _update_placeholder_visibility
+
+        # --- Initial Load / State <<< CALL MOVED HERE >>>
+        self._update_placeholder_visibility()  # Call AFTER button is defined
+
         print("QueueTab: Initialization complete.")
 
     def _update_placeholder_visibility(self) -> None:
-        """Shows or hides the 'No tasks' label based on whether tasks exist."""
+        """Shows or hides the 'No tasks' label and sets button state."""
+        # <<< الآن self.clear_finished_button معرف هنا >>>
         if not self.task_widgets:
             self.no_tasks_label.pack(pady=20, padx=10, anchor="center", fill="x")
-        elif self.no_tasks_label.winfo_ismapped():
-            self.no_tasks_label.pack_forget()
+            if hasattr(self, "clear_finished_button"):  # Add safety check just in case
+                self.clear_finished_button.configure(state="disabled")
+        else:
+            if self.no_tasks_label.winfo_ismapped():
+                self.no_tasks_label.pack_forget()
+            if hasattr(self, "clear_finished_button"):
+                # Enable button if there are tasks (actual check if any are finished happens on click)
+                self.clear_finished_button.configure(state="normal")
 
-    # --- Public Methods for UI Updates (called by LogicHandler/UserInterface) ---
-
+    # --- (باقي دوال الكلاس تبقى كما هي من الإصدار السابق) ---
+    # add_task, update_task_display, update_task_progress, remove_task,
+    # _handle_cancel_click, _handle_clear_finished, __del__
     def add_task(self, task_id: str, title: str, status: str = STATUS_PENDING) -> None:
         """Adds a new task entry to the queue UI."""
         if task_id in self.task_widgets:
-            print(
-                f"QueueTab Warning: Task {task_id} already exists in UI. Ignoring add."
-            )
             return
-
         print(f"QueueTab: Adding task {task_id} - Title: {title}")
-        self._update_placeholder_visibility()  # Hide placeholder if it was visible
 
-        task_frame = ctk.CTkFrame(
-            self.scrollable_frame, fg_color="gray15"
-        )  # Slightly different background
+        task_frame = ctk.CTkFrame(self.scrollable_frame, fg_color=COLOR_BG_DEFAULT)
         task_frame.pack(fill="x", padx=5, pady=(5, 5))
-        task_frame.grid_columnconfigure(0, weight=1)  # Info column expands
-        task_frame.grid_columnconfigure(
-            1, weight=0
-        )  # Progress bar fixed (relative) width
-        task_frame.grid_columnconfigure(2, weight=0)  # Cancel button fixed width
+        task_frame.grid_columnconfigure(0, weight=1)
+        task_frame.grid_columnconfigure(1, weight=0)
+        task_frame.grid_columnconfigure(2, weight=0)
+        task_frame.grid_rowconfigure(1, weight=0)
 
-        # --- Column 0: Title and Status ---
         info_frame = ctk.CTkFrame(task_frame, fg_color="transparent")
-        info_frame.grid(row=0, column=0, padx=(10, 5), pady=5, sticky="nsew")
-
-        display_title = title
-        if len(title) > MAX_TITLE_DISPLAY_LEN_QUEUE:
-            display_title = f"{title[:MAX_TITLE_DISPLAY_LEN_QUEUE - 3]}..."
-
+        info_frame.grid(
+            row=0, column=0, columnspan=2, padx=(10, 5), pady=(5, 0), sticky="nsew"
+        )
+        display_title = (
+            f"{title[:MAX_TITLE_DISPLAY_LEN_QUEUE - 3]}..."
+            if len(title) > MAX_TITLE_DISPLAY_LEN_QUEUE
+            else title
+        )
         title_label = ctk.CTkLabel(
             info_frame,
             text=display_title,
             anchor="w",
-            font=ctk.CTkFont(weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=COLOR_TEXT_NORMAL,
         )
         title_label.pack(fill="x", pady=(0, 2))
-
         status_label = ctk.CTkLabel(
             info_frame,
             text=status,
-            anchor="w",
-            text_color=STATUS_COLORS.get(status, "gray"),
-            font=ctk.CTkFont(size=11),
+            anchor="nw",
+            font=ctk.CTkFont(size=12),
+            text_color=STATUS_TEXT_COLORS.get(status, COLOR_TEXT_STATUS_PENDING),
+            justify="left",
         )
-        status_label.pack(fill="x")
+        status_label.pack(fill="x", pady=(0, 5))
 
-        # --- Column 1: Progress Bar ---
-        progress_bar = ctk.CTkProgressBar(
-            task_frame, width=150
-        )  # Fixed width looks better here
+        progress_bar = ctk.CTkProgressBar(task_frame)
         progress_bar.set(0.0)
-        # Progress bar initially hidden, shown when status is Running/Downloading/Processing
-        progress_bar.grid(row=0, column=1, padx=5, pady=(8, 8), sticky="e")
-        progress_bar.grid_remove()  # Start hidden
+        progress_bar.grid(
+            row=1, column=0, columnspan=2, padx=(10, 5), pady=(0, 8), sticky="ew"
+        )
+        progress_bar.grid_remove()
 
-        # --- Column 2: Cancel Button ---
         cancel_button = ctk.CTkButton(
             task_frame,
             text=BTN_CANCEL_TASK,
@@ -177,9 +183,8 @@ class QueueTab(ctk.CTkFrame):
             hover_color="darkred",
             command=lambda tid=task_id: self._handle_cancel_click(tid),
         )
-        cancel_button.grid(row=0, column=2, padx=(5, 10), pady=5, sticky="e")
+        cancel_button.grid(row=0, column=2, padx=(5, 10), pady=5, sticky="ne")
 
-        # Store widgets for later access
         self.task_widgets[task_id] = {
             "frame": task_frame,
             "title_label": title_label,
@@ -187,101 +192,147 @@ class QueueTab(ctk.CTkFrame):
             "progress_bar": progress_bar,
             "cancel_button": cancel_button,
         }
+        self._update_placeholder_visibility()
 
-        self._update_placeholder_visibility()  # Ensure placeholder is hidden now
-
-    def update_task_status(self, task_id: str, status: str, details: str = "") -> None:
-        """Updates the status label and visibility of progress bar for a specific task."""
+    def update_task_display(self, task_id: str, raw_message: str) -> None:
+        """Updates the display (status, color, progress visibility) based on the raw message."""
         if task_id not in self.task_widgets:
-            print(f"QueueTab Error: Cannot update status for unknown task {task_id}")
             return
-
         widgets = self.task_widgets[task_id]
         status_label: Optional[ctk.CTkLabel] = widgets.get("status_label")  # type: ignore
         progress_bar: Optional[ctk.CTkProgressBar] = widgets.get("progress_bar")  # type: ignore
         cancel_button: Optional[ctk.CTkButton] = widgets.get("cancel_button")  # type: ignore
+        task_frame: Optional[ctk.CTkFrame] = widgets.get("frame")  # type: ignore
+
+        base_status = raw_message.split("\n")[0]
+        details = ""
+        display_text = raw_message
+        if base_status.startswith(STATUS_DOWNLOADING):
+            base_status = STATUS_DOWNLOADING
+        elif base_status.startswith(STATUS_PROCESSING):
+            base_status = STATUS_PROCESSING
+        elif base_status.startswith("Error:"):
+            base_status = STATUS_ERROR
+            details = base_status[6:].strip()
+        elif base_status.startswith(f"{STATUS_COMPLETED}:"):
+            base_status = STATUS_COMPLETED
+            details = base_status.split(":", 1)[-1].strip()
+        elif base_status == STATUS_DOWNLOAD_CANCELLED:
+            base_status = STATUS_CANCELLED
+
+        if base_status == STATUS_ERROR:
+            details = (
+                f"{details[:MAX_ERROR_DISPLAY_LEN - 3]}..."
+                if len(details) > MAX_ERROR_DISPLAY_LEN
+                else details
+            )
+            display_text = f"Error: {details}"
 
         if status_label:
-            status_text = f"{status} ({details})" if details else status
             status_label.configure(
-                text=status_text, text_color=STATUS_COLORS.get(status, "gray")
+                text=display_text,
+                text_color=STATUS_TEXT_COLORS.get(
+                    base_status, COLOR_TEXT_STATUS_PENDING
+                ),
+                anchor="nw",
+                justify="left",
             )
-
         if progress_bar:
-            if status in [STATUS_RUNNING, STATUS_DOWNLOADING, STATUS_PROCESSING]:
+            if base_status in [STATUS_RUNNING, STATUS_DOWNLOADING, STATUS_PROCESSING]:
                 if not progress_bar.winfo_ismapped():
                     progress_bar.grid()
             elif progress_bar.winfo_ismapped():
                 progress_bar.grid_remove()
-
-        # Disable cancel button for final states
+        is_final_state = base_status in [
+            STATUS_COMPLETED,
+            STATUS_ERROR,
+            STATUS_CANCELLED,
+        ]
+        if task_frame:
+            bg_color = COLOR_BG_DEFAULT
+            if base_status == STATUS_COMPLETED:
+                bg_color = COLOR_BG_COMPLETED
+            elif base_status == STATUS_ERROR:
+                bg_color = COLOR_BG_ERROR
+            elif base_status == STATUS_CANCELLED:
+                bg_color = COLOR_BG_CANCELLED
+            task_frame.configure(fg_color=bg_color)
         if cancel_button:
-            if status in [STATUS_COMPLETED, STATUS_ERROR, STATUS_CANCELLED]:
-                cancel_button.configure(
-                    state="disabled", fg_color="gray50"
-                )  # Visually disable
-            elif status == STATUS_CANCELLING:
-                cancel_button.configure(
-                    state="disabled"
-                )  # Temporarily disable during cancelling
+            if is_final_state:
+                cancel_button.configure(state="disabled", fg_color=("gray70", "gray30"))
+            elif base_status == STATUS_CANCELLING:
+                cancel_button.configure(state="disabled")
+            else:
+                cancel_button.configure(state="normal", fg_color="red")
 
     def update_task_progress(self, task_id: str, value: float) -> None:
-        """Updates the progress bar value for a specific task."""
+        """Updates the progress bar value."""
         if task_id not in self.task_widgets:
-            # print(f"QueueTab Error: Cannot update progress for unknown task {task_id}") # Can be noisy
             return
-
         widgets = self.task_widgets[task_id]
         progress_bar: Optional[ctk.CTkProgressBar] = widgets.get("progress_bar")  # type: ignore
-
         if progress_bar and progress_bar.winfo_ismapped():
-            # Clamp value between 0.0 and 1.0
-            clamped_value = max(0.0, min(1.0, value))
-            progress_bar.set(clamped_value)
+            progress_bar.set(max(0.0, min(1.0, value)))
 
     def remove_task(self, task_id: str) -> None:
-        """Removes a task's UI elements from the queue display."""
+        """Removes a task's UI elements."""
         if task_id not in self.task_widgets:
-            print(f"QueueTab Warning: Cannot remove non-existent task {task_id}")
             return
-
         print(f"QueueTab: Removing task {task_id} from UI.")
         widgets = self.task_widgets[task_id]
         if task_frame := widgets.get("frame"):
             task_frame.destroy()
-
         del self.task_widgets[task_id]
-        self._update_placeholder_visibility()  # Show placeholder if queue becomes empty
-
-    # --- Internal Event Handlers ---
+        self._update_placeholder_visibility()
 
     def _handle_cancel_click(self, task_id: str) -> None:
-        """Handles the click on a task's cancel button."""
+        """Handles click on a task's cancel button."""
         print(f"QueueTab: Cancel button clicked for task {task_id}")
-        # Provide immediate visual feedback
         if task_id in self.task_widgets:
             if cancel_button := self.task_widgets[task_id].get("cancel_button"):
-                cancel_button.configure(state="disabled")  # Disable button immediately
-            self.update_task_status(task_id, STATUS_CANCELLING)
+                cancel_button.configure(state="disabled")
+            self.update_task_display(task_id, STATUS_CANCELLING)
+        if self.logic_handler:
+            self.logic_handler.cancel_task(task_id)
 
-        # Delegate cancellation logic to LogicHandler
-        self.logic_handler.cancel_task(task_id)
+    def _handle_clear_finished(self) -> None:
+        """Removes completed, errored, and cancelled tasks from the UI and optionally LogicHandler."""
+        print("QueueTab: Clear Finished button clicked.")
+        if not self.logic_handler:
+            return
+        try:
+            finished_task_ids = self.logic_handler.get_finished_task_ids()
+            if not finished_task_ids:
+                print("QueueTab: No finished tasks to clear.")
+                if hasattr(self.master.master, "update_status"):
+                    self.master.master.update_status("No finished tasks to clear.")
+                return
+            if messagebox.askyesno(
+                "Confirm Clear",
+                f"Remove {len(finished_task_ids)} finished task(s) from the list?",
+            ):
+                self._extracted_from__handle_clear_finished_17(finished_task_ids)
+        except Exception as e:
+            print(f"QueueTab Error during Clear Finished: {e}")
+            messagebox.showerror(
+                "Error", f"An error occurred while clearing tasks: {e}"
+            )
 
-    def clear_completed_tasks(self):
-        """(Optional) Removes tasks marked as Completed, Error, or Cancelled."""
-        # This could be triggered by a button or automatically
-        tasks_to_remove = [
-            tid
-            for tid, info in self.logic_handler.tasks_info.items()  # Assuming LogicHandler exposes this
-            if info["status"] in [STATUS_COMPLETED, STATUS_ERROR, STATUS_CANCELLED]
-        ]
-        print(f"QueueTab: Clearing {len(tasks_to_remove)} finished tasks from UI.")
-        for task_id in tasks_to_remove:
-            self.remove_task(task_id)
-            # Optionally, tell LogicHandler to prune its internal info too if not needed anymore
-
-    # --- Helper Methods ---
-    # (Add any helper methods if needed)
+    # TODO Rename this here and in `_handle_clear_finished`
+    def _extracted_from__handle_clear_finished_17(self, finished_task_ids):
+        print(f"QueueTab: Clearing {len(finished_task_ids)} tasks from UI.")
+        ui_cleared_count = 0
+        for task_id in finished_task_ids:
+            if task_id in self.task_widgets:
+                self.remove_task(task_id)
+                ui_cleared_count += 1
+        if hasattr(self.logic_handler, "prune_finished_tasks"):
+            self.logic_handler.prune_finished_tasks(finished_task_ids)
+        print(f"QueueTab: Finished clearing {ui_cleared_count} tasks from UI.")
+        if hasattr(self.master.master, "update_status"):
+            self.master.master.update_status(
+                f"Cleared {ui_cleared_count} finished tasks from queue list."
+            )
 
     def __del__(self):
         print("QueueTab: Destroying...")
