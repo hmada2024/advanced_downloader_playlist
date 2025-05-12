@@ -198,7 +198,18 @@ if __name__ == "__main__":
         import traceback
 
         traceback.print_exc()
+        # --- يمكنك ترك الكود هنا للتعامل مع الأخطاء الفادحة أثناء التشغيل ---
+        # --- لكن تأكد من عدم استدعاء on_closing هنا إذا كان يسبب مشاكل ---
+        # --- ربما تكتفي بإيقاف الـ LogicHandler وقاعدة البيانات ---
+        try:
+            if logic:
+                logic.shutdown()
+            if history_manager:
+                history_manager.close_db()
+        except Exception as cleanup_err:
+            print(f"Error during emergency cleanup: {cleanup_err}")
+
     finally:
-        # Ensure cleanup happens even if mainloop exits unexpectedly
-        print("Application main loop finished. Running final cleanup.")
-        on_closing()  # Call the same cleanup logic
+        # --- يتم تنفيذ هذا دائمًا بعد انتهاء mainloop ---
+        # --- لا تستدعِ on_closing() هنا لأنها ستكون قد استُدعيت بالفعل ---
+        print("Application main loop finished.")
