@@ -323,7 +323,9 @@ class GetLinksTab(ctk.CTkFrame):
                 self.after(
                     5000,
                     lambda: (
-                        None if self.current_thread and self.current_thread.is_alive() else self._update_status("Ready.")
+                        None
+                        if self.current_thread and self.current_thread.is_alive()
+                        else self._update_status("Ready.")
                     ),
                 )
             # else: # المستخدم ألغى مربع الحوار
