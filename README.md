@@ -32,8 +32,10 @@ _(You can add a screenshot for the History tab here if you have one)_
 
 ## 🚀 Installation & Usage
 
-1.  Download the latest `Advanced_Spider_Fetch_*.exe` file from the Releases section (if available) or use the executable you compiled.
-2.  Run the executable file. No installation is required.
+1.  **Download the Application:**
+    - **[Download ASF App v3.0.0 (Windows Executable)](https://github.com/hmada2024/advanced_spider_fetch/releases/download/v3.0.0/ASF.App.V3.0.0.exe)**
+    - Alternatively, visit the [Releases page](https://github.com/hmada2024/advanced_spider_fetch/releases) for all versions.
+2.  Run the downloaded `ASF.App.V3.0.0.exe` file. No installation is required.
 3.  **Add Download Tab:**
     - Paste a video or playlist URL.
     - Click `Fetch Info`.
